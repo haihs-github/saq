@@ -1,0 +1,170 @@
+<app-header/>
+<div class="content">
+      <app-navbar/>
+  <div  *ngIf="!createAcc" class="main scroll">
+    <div style="display: flex; justify-content: center; font-size: 2rem; color: red;">Quản lý tài khoản</div>
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+
+      <a (click)="themMoi()" style="color: #fff; display: flex; justify-content: center; align-items: center; text-decoration: none; background-color: rgb(14, 229, 28); width: 150px; height: 40px;" class="nav_item" routerLinkActive="active" ariaCurrentWhenActive="page">
+        Tạo tài khoản
+      </a>
+    </div>
+
+    <div>
+          <table>
+              <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Tên</th>
+                    <th>Tài khoản</th>
+                    <th>Mật khẩu</th>
+                    <th>Email</th>
+                    <th>Điện thoại</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                     <th style="padding-left: 30px; width: 60px;">Sửa</th>
+                    <th style="padding-left: 30px; width: 60px;">Xóa</th>
+                  </tr>
+              </thead>
+                <tbody>
+                    <tr *ngFor="let x of account;let i = index">
+                      <td>{{i+1}}</td>
+                      <td>{{x.USER_FullName}}</td>
+                      <td>{{x.USER_UserName}}</td>
+                      <td>{{x.USER_Password}}</td>
+                      <td>{{x.USER_Email}}</td>
+                      <td>{{x.USER_PhoneNumber}}</td>
+                      <td>{{x.USER_Role}}</td>
+                      <td>{{x.USER_Status}}</td>
+                       <td>
+                        <a (click)="capnhat(x.ID)" style="color: rgb(14, 229, 28); display: flex; justify-content: center; text-decoration: none;" class="nav_item" routerLink="/them-cap-nhat" routerLinkActive="active" ariaCurrentWhenActive="page">
+                          <i class="fa-solid fa-pen"></i>
+                        </a>
+                      </td>
+                      <td (click)="xoa(x.ID)" ><i class="fa-solid fa-trash" style="color: red; display: flex; justify-content: center;"></i></td>
+                    </tr>
+                </tbody>
+          </table>
+      </div>
+  </div>
+<div *ngIf="createAcc" class="form-container">
+  <h2>{{ isEdit ? 'Cập nhật tài khoản' : 'Tạo tài khoản mới' }}</h2>
+
+  <form #f="ngForm" (ngSubmit)="submit(f)" novalidate>
+
+    <!-- Họ và tên -->
+    <label>Họ và tên</label>
+    <input
+      type="text"
+      [(ngModel)]="form.USER_FullName"
+      name="fullname"
+      required
+      minlength="3"
+      #fullname="ngModel"
+    />
+    <div class="error" *ngIf="fullname.invalid && fullname.touched">
+      Họ tên không được để trống (tối thiểu 3 ký tự)
+    </div>
+
+    <!-- Tài khoản -->
+    <label>Tài khoản</label>
+    <input
+      type="text"
+      [(ngModel)]="form.USER_UserName"
+      name="username"
+      required
+      pattern="^[a-zA-Z0-9_]+$"
+      #username="ngModel"
+    />
+    <div class="error" *ngIf="username.invalid && username.touched">
+      Tài khoản chỉ gồm chữ, số và dấu _
+    </div>
+
+    <!-- Mật khẩu -->
+    <label>Mật khẩu</label>
+    <input
+      type="password"
+      [(ngModel)]="form.USER_Password"
+      name="password"
+      required
+      minlength="6"
+      #password="ngModel"
+    />
+    <div class="error" *ngIf="password.invalid && password.touched">
+      Mật khẩu tối thiểu 6 ký tự
+    </div>
+
+    <!-- Email -->
+    <label>Email</label>
+    <input
+      type="email"
+      [(ngModel)]="form.USER_Email"
+      name="email"
+      required
+      email
+      #email="ngModel"
+    />
+    <div class="error" *ngIf="email.invalid && email.touched">
+      Email không hợp lệ
+    </div>
+
+    <!-- Điện thoại -->
+    <label>Điện thoại</label>
+    <input
+      type="text"
+      [(ngModel)]="form.USER_PhoneNumber"
+      name="phone"
+      required
+      pattern="^(0[0-9]{9})$"
+      #phone="ngModel"
+    />
+    <div class="error" *ngIf="phone.invalid && phone.touched">
+      Số điện thoại phải gồm 10 số, bắt đầu bằng 0
+    </div>
+
+    <!-- Vai trò -->
+    <label>Vai trò</label>
+    <select
+      [(ngModel)]="form.USER_Role"
+      name="role"
+      required
+      #role="ngModel"
+    >
+      <option value="">-- Chọn vai trò --</option>
+      <option value="Giáo viên">Giáo viên</option>
+      <option value="Ban quản lý">Ban quản lý</option>
+      <option value="Ban giám hiệu">Ban giám hiệu</option>
+    </select>
+    <div class="error" *ngIf="role.invalid && role.touched">
+      Vui lòng chọn vai trò
+    </div>
+
+    <!-- Trạng thái -->
+    <label>Trạng thái</label>
+    <select
+      [(ngModel)]="form.USER_Status"
+      name="status"
+      required
+      #status="ngModel"
+    >
+      <option value="">-- Chọn trạng thái --</option>
+      <option value="Active">Active</option>
+      <option value="Inactive">Inactive</option>
+    </select>
+    <div class="error" *ngIf="status.invalid && status.touched">
+      Vui lòng chọn trạng thái
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" [disabled]="f.invalid">
+      {{ isEdit ? 'Cập nhật' : 'Tạo tài khoản' }}
+    </button>
+
+  </form>
+</div>
+
+
+  
+    <app-user/>
+</div>
+<app-footer/>

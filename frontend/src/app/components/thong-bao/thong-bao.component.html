@@ -1,0 +1,21 @@
+<div class="thong_bao">
+    <h2 style="color: red; border-bottom: solid 1px #eee; margin-bottom: 10px;">Trả thết bị/phòng trong hôm nay</h2>
+    <div *ngFor="let x of thongbao" >
+        <div class="thong_bao-hn">
+            <div class="red" > Bạn có phiếu thiết bị <strong>"{{x.BORROW_RETURN_SLIP_Name}}"</strong> đến hạn trả vào ngày <strong>{{ x.DATE_ExceptionReturnDate | date:'dd/MM/yyyy' }}</strong>
+ <span class="cb">Cảnh báo quá hạn mượn</span></div>
+            <div></div>
+        </div>
+    </div>
+
+    <button>
+        <a routerLink="/dang-ky">Trả ngay</a>
+    </button>
+    <h2 style="color: blue;   border-bottom: solid 1px #eee; margin-bottom: 10px;">Thông báo khác</h2>
+   <div *ngFor="let thongBao of thongBaos" class="thong_bao-hn">
+  <div>{{ thongBao.noiDung }}</div>
+  <div>{{ thongBao.ngay }}</div>
+</div>
+
+</div>
+<router-outlet></router-outlet>

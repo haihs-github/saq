@@ -1,0 +1,198 @@
+<app-header/>
+
+<style>
+  .content {
+    width: 100%;
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+  }
+
+
+  .item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    height: 40px;
+  }
+thead {
+  background-color: #ad171c !important;
+  /* color: #fff; */
+}
+  span {
+    margin-right: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: #fff;
+  }
+
+  th, td {
+    border: 1px solid #999;
+    padding: 8px;
+    text-align: center;
+  }
+
+  th {
+    /* background: #eee; */
+    color: #fff;
+  }
+
+  textarea {
+    width: 95%;
+  }
+
+  .button {
+    margin-top: 20px;
+    width: 120px;
+    height: 40px;
+    background: rgb(26, 227, 19);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .scroll {
+    overflow-y: auto;
+  }
+</style>
+<div class="content">
+  <app-navbar/>
+  <div *ngIf="!isDetail" class="main scroll">
+    <div style="display: flex; justify-content: center; font-size: 2rem; color: red;">Phê duyệt </div>
+    <div>
+      <table>
+        <thead>
+            <tr>
+              <th>STT</th>
+              <th>Tên phiếu</th>
+              <th>Ghi chú</th>
+              <th>Trạng thái</th>
+              <th>Ngày tạo</th>
+              <th>Chi tiết</th>
+            </tr>
+        </thead>
+          <tbody>
+              <tr *ngFor="let x of approved;let i=index">
+                <td>{{i+1}}</td>
+                <td>{{x.REQUEST_SLIP_Name}}</td>
+                <td>{{x.REQUEST_SLIP_Description}}</td>
+                <td>{{x.REQUEST_SLIP_Status}}</td>
+                <td>
+
+                  <input
+         type="datetime-local"
+         [value]="x.REQUEST_SLIP_RequestDate | date:'yyyy-MM-ddTHH:mm'"
+             disabled
+       >
+                </td>
+                <td>
+                   <button (click)="chiTiet(x.REQUEST_SLIP_ID)" >
+                          Chi tiết
+                   </button>
+                </td>
+               
+              </tr>
+          </tbody>
+     
+    </table>
+      </div>
+  </div>
+    <div *ngIf="isDetail" class="main_detail scroll">
+    <h2 style="text-align:center; color:red;">
+      Chi tiết 
+    </h2>
+
+    <!-- THÔNG TIN PHIẾU -->
+    <div class="item">
+      <span>Tên phiếu:</span>
+      <span>{{approvedById.REQUEST_SLIP_Name}}</span>
+    </div>
+
+    <div class="item">
+      <span>Giáo viên:</span>
+      <span>{{ approvedById.USER_FullName }}</span>
+    </div>
+
+    <div class="item">
+      <span>Ngày tạo:</span>
+      <input
+        type="datetime-local"
+        [value]="approvedById?.REQUEST_SLIP_RequestDate | date:'yyyy-MM-ddTHH:mm'"
+            disabled
+      >
+    </div>
+
+    <!-- BẢNG THIẾT BỊ / PHÒNG -->
+    <table>
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Tên</th>
+          <th>Mô tả</th>
+          <th>Loại</th>
+          <th>Số lượng</th>
+          <th>Tình trạng</th>
+          <th>Đề xuất</th>
+  
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let eq of approvedById?.items; let i = index" [ngClass]="{'red-background': eq.EQUIPMENT_ITEM_Status === 'Thêm mới'}">
+          <td>{{ i + 1 }}</td>
+
+          <td>{{ eq.EQUIPMENT_ITEM_Name || eq.ROOM_Name }}</td>
+          <td>{{ eq.EQUIPMENT_ITEM_Description || eq.ROOM_Description + " tòa "+eq.LOCATION_Building +" tầng "+ eq.LOCATION_Floor+ " số lượng ghế "+eq.ROOM_Capacity }}</td>
+
+          <td>
+            {{ eq.EQUIPMENT_TYPE_Name || eq.ROOM_TYPE_Name }}
+          </td>
+
+          <td>1</td>
+
+          <td>
+            {{eq.EQUIPMENT_ITEM_Status}}
+          </td>
+          <td>
+            {{eq.REQUEST_ITEM_Status}}
+          </td>
+
+        </tr>
+      </tbody>
+    </table>
+    <div class="item">
+      <span>Trạng thái:</span>
+      <select
+        [(ngModel)]="approvedById.REQUEST_SLIP_Status"
+      >
+        <option value="Chưa duyệt">Chưa duyệt</option>
+        <option value="Đã duyệt">Đã duyệt</option>
+        <option value="Không duyệt">Không duyệt</option>
+      </select>
+     
+
+    </div>
+      <div class="item">
+      <span>Ghi chú:</span>
+     <textarea
+  [disabled]="!isManagementBoard"
+  style="width: 50%;"
+  rows="2"
+  [(ngModel)]="approvedById.REQUEST_SLIP_ApproveNotes">
+</textarea>
+
+    </div>
+
+    <div *ngIf="isManagementBoard" class="button" (click)="duyet()">
+      Xác nhận
+    </div>
+  </div>
+    <app-user/>
+</div>
+<app-footer/>

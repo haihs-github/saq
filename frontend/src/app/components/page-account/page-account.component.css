@@ -1,0 +1,145 @@
+.content {
+    width: 100vw;
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+    
+  }
+.main {
+    width: 100%;
+    /* display: flex;
+    justify-content: center;
+    align-items: center; */
+}
+
+/* ::-webkit-scrollbar {
+    display: none;
+} */
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+  }
+  
+  td, th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+  }
+  tr {
+    height: 20px;
+  }
+  
+  tr:nth-child(even) {
+    background-color: #dddddd;
+  }
+  thead {
+    background-color: #ad171c;
+    color: #fff;
+  }
+.scroll {
+  overflow-y: scroll;
+}
+.red-background {
+  background-color: red !important;
+}
+
+
+/* Toàn trang */
+/* .content {
+  height: 80vh;
+  background: #f4f6f9;
+  padding: 20px;
+} */
+
+/* Khung form */
+.form-container {
+  width:400px;
+  margin: 40px auto;
+  background: #ffffff;
+  padding: 30px 35px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Tiêu đề */
+.form-container h2 {
+  margin: 0;
+  text-align: center;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+/* Label */
+.form-container label {
+  font-weight: 600;
+  margin-top: 12px;
+  display: block;
+  color: #555;
+}
+
+/* Input & select */
+.form-container input,
+.form-container select {
+  width: 100%;
+  padding: 5px 12px;
+  margin-top: 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+/* Focus */
+.form-container input:focus,
+.form-container select:focus {
+  border-color: #0ee51c;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(14, 229, 28, 0.2);
+}
+
+/* Button */
+.form-container button {
+  width: 100%;
+  margin-top: 25px;
+  padding: 12px;
+  background: #0ee51c;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.form-container button:hover {
+  background: #0bc718;
+}
+.error {
+  color: red;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .form-container {
+    padding: 20px;
+  }
+}
+
+/* responsive
+/* Mobile: width < 740px = 46.1875em */
+@media (max-width: 46.1875em) {
+
+
+}
+
+@media (min-width: 1020px) and (max-width: 1200px){
+  
+} 
+/* Tablet: width >= 740px and width <1024px  */
+@media (min-width: 46.25em) and (max-width: 63.9375em){
+
+} 

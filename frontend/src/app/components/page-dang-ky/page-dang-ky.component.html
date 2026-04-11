@@ -1,0 +1,37 @@
+<app-header/>
+<div class="content">
+  <app-navbar/>
+  <div class="main scroll">
+    <div style="display: flex; justify-content: center; font-size: 2rem; color: red;">Đã đăng ký</div>
+    <div>
+      <table>
+        <thead>
+            <tr>
+              <th>STT</th>
+              <th>Tên phiếu mượn</th>
+              <th>Ghi chú</th>
+              <th>Trạng thái</th>
+              <th>Chi tiết</th>
+            </tr>
+        </thead>
+          <tbody>
+              <tr *ngFor="let x of dangKy;let i=index"   [class.late]="x.isLate">
+                <td>{{i+1}}</td>
+                <td>{{x.BORROW_RETURN_SLIP_Name}}</td>
+                <td>{{x.BORROW_RETURN_SLIP_Notes}}</td>
+                <td>{{x.BORROW_RETURN_SLIP_Status}}</td>
+                <td>
+                   <button (click)="chiTiet(x.ID,x.BORROW_RETURN_SLIP_Status)" >
+                          Chi tiết
+                   </button>
+                </td>
+               
+              </tr>
+          </tbody>
+     
+    </table>
+      </div>
+  </div>
+    <app-user/>
+</div>
+<app-footer/>

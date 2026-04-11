@@ -1,0 +1,62 @@
+<div class="navbar">
+    <div class="nav">
+
+        <!-- isTeacher -->
+        <a class="nav_item" routerLink="/trang-chu"  routerLinkActive="active" ariaCurrentWhenActive="page"   [routerLinkActiveOptions]="{ exact: true }">
+            <i class="fa-solid fa-house"></i>
+            <span class="n">Trang chủ</span>
+        </a>
+        <a *ngIf="!isManagementBoard"  class="nav_item" routerLink="/thiet-bi" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-business-time"></i>
+            <div class="n">Thiết bị</div>
+        </a>
+        <a *ngIf="!isManagementBoard" class="nav_item" routerLink="/phong-hoc" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-house-chimney-user"></i>
+            <div class="n">Phòng bộ môn</div>
+        </a>
+        <a *ngIf="!isManagementBoard" class="nav_item" routerLink="/dang-ky" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-circle-check"></i>
+            <div class="n">Mượn trả thiết bị</div>
+        </a>
+<!-- isFacilityManager -->
+        <a *ngIf="isFacilityManager" class="nav_item" routerLink="/request" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-paper-plane"></i>
+            <div class="n">Đề xuất yêu cầu</div>
+        </a>
+        <a *ngIf="isFacilityManager" class="nav_item" routerLink="/approved" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-check-to-slot"></i>
+            <div class="n">Phê duyệt yêu cầu</div>
+        </a>
+        <a *ngIf="isFacilityManager" class="nav_item" routerLink="/quan-ly" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <div class="n">Quản lý thiết bị</div>
+        </a>
+        <a *ngIf="isFacilityManager" class="nav_item" routerLink="/thong-ke-bao-cao" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-table-list"></i>
+            <div class="n">Thống kê & báo cáo</div>
+        </a>
+        <a *ngIf="isFacilityManager" class="nav_item" routerLink="/account" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-user"></i>
+            <div class="n">Quản lý tài khoản</div>
+        </a>
+        <!-- isManagementBoard -->
+        <a *ngIf="isManagementBoard" class="nav_item" routerLink="/approved" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-check-to-slot"></i>
+            <div class="n">Phê duyệt yêu cầu</div>
+        </a>
+        <!-- <a *ngIf="isManagementBoard" class="nav_item" routerLink="/quan-ly" routerLinkActive="active" ariaCurrentWhenActive="page">
+             <i class="fa-solid fa-pen-to-square"></i>
+                <div class="n">Quản lý thiết bị</div>
+        </a> -->
+        <a *ngIf="isManagementBoard"  class="nav_item" routerLink="/thong-ke-bao-cao" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-table-list"></i>
+            <div class="n">Thống kê & báo cáo</div>
+        </a>
+        <!-- <a *ngIf="isManagementBoard" class="nav_item" routerLink="/account" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <i class="fa-solid fa-user"></i>
+            <div class="n">Quản lý tài khoản</div>
+        </a> -->
+
+    </div>
+</div>
+<router-outlet></router-outlet>

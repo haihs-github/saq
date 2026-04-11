@@ -1,0 +1,167 @@
+<app-header/>
+<div class="content">
+  <app-navbar/>
+  <div  *ngIf="!isDetail" class="main scroll">
+    <div  class="excel">
+     <div style="margin-top: 10px; margin-right: 20px;">
+        <input 
+              class="item" type="datetime-local"    
+              [(ngModel)]="startDate"
+              (change)="onSearch()"
+              />
+              <span style="padding: 0 4px 0 4px;">đến</span>
+              <input class="item" type="datetime-local"
+              [(ngModel)]="endDate"
+              (change)="onSearch()"
+              />
+     </div>
+      <div (click)="exportToExcel()" style="background-color: #6aff00; width: 150px; height: 40px; border-radius: 100px; display: flex;justify-content: center;align-items: center; margin: 5px;"><i class="fas fa-file-export"></i>Export</div>
+    </div>
+ 
+    <div style="display: flex; justify-content: center; font-size: 2rem; color: red;">Thống kê và báo cáo</div>
+    <div>
+          <table>
+              <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Tên báo cáo</th>
+                    <th>Người tạo</th>
+                    <th>Nội dung</th>
+                    <th>Ngày trả</th>
+                    <th>Chi tiết</th>
+                  </tr>
+              </thead>
+                <tbody>
+                    <tr *ngFor="let x of BorrowReturnSlip;let i=index">
+                      <td>{{i+1}}</td>
+                      <td>{{x.BORROW_RETURN_SLIP_Name}}</td>
+                      <td>{{x.USER_FullName}}</td>
+                      <td>
+                            <ul style="margin: 0; padding-left: 16px;">
+                              <li *ngFor="let item of x.items">
+                                <span *ngIf="item.EQUIPMENT_ITEM_Name">
+                                  Thiết bị: {{ item.EQUIPMENT_ITEM_Name }}
+                                </span>
+                                <span *ngIf="item.ROOM_Name">
+                                  Phòng: {{ item.ROOM_Name }}
+                                </span>
+                              </li>
+                            </ul>
+                          </td> 
+                      <td>
+  <input
+    type="datetime-local"
+    [value]="x.DATE_BorrowDate | date:'yyyy-MM-ddTHH:mm'"
+    disabled
+  />
+</td>
+ <td>
+                   <button (click)="chiTiet(x.BORROW_RETURN_SLIP_ID)" >
+                          Chi tiết
+                   </button>
+                </td>
+
+                       
+                    </tr>
+                </tbody>
+           
+          </table>
+      </div>
+  </div>
+    <div *ngIf="isDetail" class="main_d scroll">
+    <h2 style="text-align:center; color:red;">
+      Chi tiết 
+    </h2>
+
+    <!-- THÔNG TIN PHIẾU -->
+    <div class="item_detail">
+      <span>Tên phiếu:</span>
+      <span>{{thongke.BORROW_RETURN_SLIP_Name}}</span>
+    </div>
+
+    <div class="item_detail">
+      <span>Giáo viên:</span>
+      <span>{{ thongke.USER_FullName }}</span>
+    </div>
+
+    <div class="item_detail">
+      <span>Ngày mượn:</span>
+      <input
+        type="datetime-local"
+        [value]="thongke?.DATE_BorrowDate | date:'yyyy-MM-ddTHH:mm'"
+            disabled
+      >
+    </div>
+    <div class="item_detail">
+      <span>Ngày trả dự kiến:</span>
+      <input
+        type="datetime-local"
+        [value]="thongke?.DATE_ExceptionReturnDate | date:'yyyy-MM-ddTHH:mm'"
+            disabled
+      >
+    </div>
+    <div class="item_detail">
+      <span>Ngày trả thực tế:</span>
+      <input
+        type="datetime-local"
+        [value]="thongke?.DATE_ActualReturnDate | date:'yyyy-MM-ddTHH:mm'"
+            disabled
+      >
+    </div>
+
+    <!-- BẢNG THIẾT BỊ / PHÒNG -->
+    <table>
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Tên</th>
+          <th>Mô tả</th>
+          <th>Loại</th>
+          <th>Số lượng</th>
+  
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let eq of thongke?.items; let i = index" [ngClass]="{'red-background': eq.EQUIPMENT_ITEM_Status === 'Thêm mới'}">
+          <td>{{ i + 1 }}</td>
+
+          <td>{{ eq.EQUIPMENT_ITEM_Name || eq.ROOM_Name }}</td>
+          <td>{{ eq.EQUIPMENT_ITEM_Description || eq.ROOM_Description }}</td>
+
+          <td>
+            {{ eq.EQUIPMENT_TYPE_Name || eq.ROOM_TYPE_Name }}
+          </td>
+
+          <td>1</td>
+
+        </tr>
+      </tbody>
+    </table>
+    <div class="item_detail">
+      <span>Trạng thái:</span>
+      <select
+        [(ngModel)]="thongke.BORROW_RETURN_SLIP_Status"
+        disabled
+      >
+        <option value="Chưa trả">Chưa trả</option>
+        <option value="Đã trả">Đã trả</option>
+      </select>
+     
+
+    </div>
+      <!-- <div class="item">
+      <span>Ghi chú:</span>
+     <textarea
+  [disabled]="!isManagementBoard"
+  style="width: 50%;"
+  rows="2"
+  [(ngModel)]="thongke.REQUEST_SLIP_ApproveNotes">
+</textarea>
+
+    </div> -->
+  </div>
+    <app-user/>
+</div>
+<app-footer/>
+

@@ -1,0 +1,35 @@
+<div class="header">
+    <div class="w_logo">
+        <a style="margin: 0; padding: 0; width: 100px;" routerLink="/trang-chu" routerLinkActive="active" ariaCurrentWhenActive="page">
+            <img class="logo" src="../../../assets/logo_nvh.png" />
+        </a>
+            <h3 class="namet">
+                THPT Lê Đình Hưng
+            </h3>
+    </div>
+    <!-- <div *ngIf="!status">
+      <app-search/>
+    </div>
+    <div *ngIf="status">
+      <app-search-thong-ke/>
+    </div> -->
+    <div>
+        <app-search/>
+    </div>
+    <div class="thoat">
+        <div (click)="click()" class="list">
+            <i class="fas fa-list"></i>
+        </div>
+        <!-- <div class="bell">
+            <a style="color: #fff;" routerLink="/trang-chu">
+                <i class="fas fa-bell"></i>
+            </a>
+        </div> -->
+        <div class="out" (click)="logout()" >
+            <i  class="fas fa-sign-out-alt"></i>
+            <span style="margin-left: 10px;" >Thoát</span>
+        </div>
+     
+    </div>
+</div>
+<router-outlet></router-outlet>

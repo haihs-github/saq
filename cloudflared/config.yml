@@ -1,0 +1,9 @@
+tunnel: 3f464b61-361a-41b2-a6c6-5bbcd0750616  
+credentials-file: /etc/cloudflared/3f464b61-361a-41b2-a6c6-5bbcd0750616.json
+
+ingress:
+  - hostname: datnluyenhung.io.vn
+    service: http://nginx:80
+  - service: http_status:404
+# optional: log level
+loglevel: info

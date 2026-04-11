@@ -1,0 +1,49 @@
+<app-header/>
+<div class="content">
+      <app-navbar/>
+  <div class="main scroll">
+    <div style="display: flex; justify-content: center; font-size: 2rem; color: red;">Danh sách thiết bị</div>
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+
+      <a (click)="layDanhSachThietBiDangTick()"  style="color: #fff; display: flex; justify-content: center; align-items: center; text-decoration: none; background-color: rgb(14, 229, 28); width: 150px; height: 40px;" class="nav_item" routerLinkActive="active" ariaCurrentWhenActive="page">
+        Tạo phiếu 
+      </a>
+    </div>
+
+    <div>
+          <table>
+              <thead>
+                  <tr>
+                    <th>STT</th>
+                    <th>Tên thiết bị</th>
+                    <th>Loại thiết bị</th>
+                    <th>Mô tả thiết bị</th>
+                    <th>Tình trạng</th>
+                    <!-- <th>Bộ môn</th> -->
+                    <th>Số lượng</th>
+                    <th style="padding-left: 30px; width: 60px;">Đăng ký</th>
+                  </tr>
+              </thead>
+                <tbody>
+                    <tr *ngFor="let x of thietBi;let i = index" [ngClass]="{'red-background': x.EQUIPMENT_ITEM_Status !== 'Có sẵn'}">
+                      <td>{{i+1}}</td>
+                      <td>{{x.EQUIPMENT_ITEM_Name}}</td>
+                      <td>{{x.EQUIPMENT_MODEL_Name}}</td>
+                      <td>{{x.EQUIPMENT_ITEM_Description}}</td>
+                      <td>{{x.EQUIPMENT_ITEM_Status}}</td>
+                      <td>{{x.EQUIPMENT_ITEM_Quantity}}</td>
+                       <td style="text-align:center">
+                        <input
+                          type="checkbox"
+                          [(ngModel)]="x.checked"
+                          [disabled]="x.EQUIPMENT_ITEM_Status !== 'Có sẵn'"
+                        />
+                      </td>
+                    </tr>
+                </tbody>
+          </table>
+      </div>
+  </div>
+    <app-user/>
+</div>
+<app-footer/>

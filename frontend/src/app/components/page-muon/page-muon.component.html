@@ -1,0 +1,267 @@
+
+<style>
+  .content {
+    width: 100%;
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+  }
+
+  .main {
+    width: 100%;
+    background-color: rgb(196, 196, 196);
+    padding: 10px;
+    margin: 10px;
+    box-sizing: border-box;
+  }
+
+  .item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    height: 40px;
+  }
+
+  span {
+    margin-right: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: #fff;
+  }
+
+  th, td {
+    border: 1px solid #999;
+    padding: 8px;
+    text-align: center;
+  }
+
+  th {
+    background: #eee;
+  }
+
+  textarea {
+    width: 95%;
+  }
+
+  .button {
+    margin-top: 20px;
+    width: 120px;
+    height: 40px;
+    background: rgb(26, 227, 19);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .scroll {
+    overflow-y: auto;
+  }
+</style>
+
+<app-header></app-header>
+
+<div class="content">
+  <app-navbar></app-navbar>
+
+  <div *ngIf="type==='create_equipment_slip' || type==='create_room_slip'" class="main scroll">
+    <h2 style="text-align:center; color:red;">
+      Mượn thiết bị / phòng bộ môn
+    </h2>
+
+    <!-- THÔNG TIN PHIẾU -->
+    <div class="item">
+      <span>Tên phiếu:</span>
+      <input style="width:50%" [(ngModel)]="BORROW_RETURN_SLIP_Name">
+    </div>
+
+    <div class="item">
+      <span>Giáo viên:</span>
+      <span>{{ user.USER_FullName }}</span>
+    </div>
+
+    <div class="item">
+      <span>Ngày & tiết nhận:</span>
+      <div style="width:50%; display:flex">
+        <select [(ngModel)]="tietMuon">
+          <option [value]="1">Tiết 1</option>
+          <option [value]="2">Tiết 2</option>
+          <option [value]="3">Tiết 3</option>
+          <option [value]="4">Tiết 4</option>
+          <option [value]="5">Tiết 5</option>
+          <option [value]="6">Tiết 6</option>
+          <option [value]="7">Tiết 7</option>
+          <option [value]="8">Tiết 8</option>
+          <option [value]="9">Tiết 9</option>
+          <option [value]="10">Tiết 10</option>
+        </select>
+
+        <input type="date" [(ngModel)]="ngayMuon" [min]="today">
+      </div>
+    </div>
+
+    <div class="item">
+      <span>Mượn trong:</span>
+      <select [(ngModel)]="tietTra" style="width:50%">
+        <option [value]="1">1 tiết</option>
+        <option [value]="2">2 tiết</option>
+        <option [value]="3">3 tiết</option>
+        <option [value]="4">4 tiết</option>
+        <option [value]="5">5 tiết</option>
+      </select>
+    </div>
+
+    <!-- BẢNG THIẾT BỊ / PHÒNG -->
+    <table>
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Tên</th>
+          <th>Mô tả</th>
+          <th>Loại</th>
+          <th>Số lượng</th>
+          <th>Tình trạng</th>
+  
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let eq of equipments; let i = index">
+          <td>{{ i + 1 }}</td>
+
+          <td>{{ eq.EQUIPMENT_ITEM_Name || eq.ROOM_Name }}</td>
+          <td>{{ eq.EQUIPMENT_ITEM_Description || eq.ROOM_Description + " tòa "+eq.LOCATION_Building +" tầng "+ eq.LOCATION_Floor+ " số lượng ghế "+eq.ROOM_Capacity }}</td>
+
+          <td>
+            {{ eq.EQUIPMENT_TYPE_Name || eq.ROOM_TYPE_Name }}
+          </td>
+
+          <td>1</td>
+
+          <td>
+           {{ eq.EQUIPMENT_ITEM_Status|| eq.ROOM_Status }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+      <div class="item">
+      <span>Ghi chú:</span>
+      <textarea style="width: 50%;" rows="2" [(ngModel)]="Note"></textarea>
+    </div>
+
+    <div class="button" (click)="create()">
+      Đăng ký
+    </div>
+  </div>
+  
+  <div *ngIf="type==='slip_detail'" class="main scroll">
+    <h2 style="text-align:center; color:red;">
+      Chi tiết thiết bị / phòng bộ môn
+    </h2>
+
+    <!-- THÔNG TIN PHIẾU -->
+    <div class="item">
+      <span>Tên phiếu:</span>
+      <span>{{BorrowReturnSlip[0].BORROW_RETURN_SLIP_Name}}</span>
+    </div>
+
+    <div class="item">
+      <span>Giáo viên:</span>
+      <span>{{ BorrowReturnSlip[0].USER_FullName }}</span>
+    </div>
+
+    <div class="item">
+      <span>Ngày mượn:</span>
+      <input
+        type="datetime-local"
+        [value]="BorrowReturnSlip[0]?.DATE_BorrowDate | date:'yyyy-MM-ddTHH:mm'"
+            disabled
+      >
+    </div>
+    <div class="item">
+      <span>Ngày trả:</span>
+      <input
+        type="datetime-local"
+        [value]="BorrowReturnSlip[0]?.DATE_ExceptionReturnDate | date:'yyyy-MM-ddTHH:mm'"
+          disabled
+      >
+    </div>
+
+    <!-- BẢNG THIẾT BỊ / PHÒNG -->
+    <table>
+      <thead>
+        <tr>
+          <th>STT</th>
+          <th>Tên</th>
+          <th>Mô tả</th>
+          <th>Loại</th>
+          <th>Số lượng</th>
+          <th>Tình trạng khi trả</th>
+  
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let eq of BorrowReturnSlip[0]?.items; let i = index">
+          <td>{{ i + 1 }}</td>
+
+          <td>{{ eq.EQUIPMENT_ITEM_Name || eq.ROOM_Name }}</td>
+          <td>{{ eq.EQUIPMENT_ITEM_Description || eq.ROOM_Description + " tòa "+eq.LOCATION_Building +" tầng "+ eq.LOCATION_Floor+ " số lượng ghế "+eq.ROOM_Capacity }}</td>
+
+          <td>
+            {{ eq.EQUIPMENT_TYPE_Name || eq.ROOM_TYPE_Name }}
+          </td>
+
+          <td>1</td>
+
+<td>
+  <select
+    [(ngModel)]="eq.EQUIPMENT_ITEM_Status"
+    *ngIf="eq.EQUIPMENT_ITEM_Status !== null"
+  >
+  <option value="Đang mượn">Đang mượn</option>
+    <option value="Có sẵn">Bình thường</option>
+    <option value="Hỏng">Hỏng</option>
+    <option value="Mất">Mất</option>
+  </select>
+
+  <select
+    [(ngModel)]="eq.ROOM_Status"
+    *ngIf="eq.EQUIPMENT_ITEM_Status === null"
+  >
+    <option value="Đang mượn">Đang mượn</option>
+    <option value="Có sẵn">Bình thường</option>
+    <option value="Hỏng thiết bị">Hỏng thiết bị</option>
+  </select>
+</td>
+
+        </tr>
+      </tbody>
+    </table>
+      <div class="item">
+      <span>Ghi chú:</span>
+      <textarea style="width: 50%;" rows="2" [(ngModel)]="BorrowReturnSlip[0].BORROW_RETURN_SLIP_Notes"></textarea>
+    </div>
+
+    <div *ngIf="BorrowReturnSlip[0].BORROW_RETURN_SLIP_Status !=='Đã trả'" class="button" (click)="traThietbi()">
+      Trả thiết bị
+    </div>
+    <div *ngIf="BorrowReturnSlip[0].BORROW_RETURN_SLIP_Status ==='Đã trả'" class="button" (click)="daTra()">
+      Đã trả 
+    </div>
+  </div>
+ <div *ngIf="type===''" class="main scroll">
+    <h2 style="text-align:center; color:red;">
+      Mượn thiết bị / phòng bộ môn
+    </h2>
+  </div>
+
+  <app-user></app-user>
+</div>
+
+<app-footer></app-footer>

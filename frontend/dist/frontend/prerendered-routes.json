@@ -1,0 +1,17 @@
+{
+  "routes": [
+    "/account",
+    "/approved",
+    "/dang-ky",
+    "/error",
+    "/login",
+    "/muon",
+    "/phong-hoc",
+    "/quan-ly",
+    "/request",
+    "/them-cap-nhat",
+    "/thiet-bi",
+    "/thong-ke-bao-cao",
+    "/trang-chu"
+  ]
+}

@@ -1,0 +1,79 @@
+version: "3.9"
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/dist/frontend:/usr/share/nginx/html:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - webnet
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: tunnel run
+    depends_on:
+      - nginx
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - ./cloudflared/3f464b61-361a-41b2-a6c6-5bbcd0750616.json:/etc/cloudflared/3f464b61-361a-41b2-a6c6-5bbcd0750616.json:ro
+    networks:
+      - webnet
+    restart: unless-stopped
+
+  database-mysql:
+    image: mysql:8.0
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: datn
+      MYSQL_ROOT_PASSWORD: luyen123
+    ports:
+      - '3307:3306'
+    volumes:
+      - ./insert.sql:/docker-entrypoint-initdb.d/insert.sql:ro
+    networks:
+      - webnet
+    expose:
+      - 3306
+
+  backend:
+    image: node-be:latest
+    container_name: node-backend
+    restart: unless-stopped
+    environment:
+      TOKEN: Zabcdefghijklmnopqrstuvwxyz
+      USER: root
+      PASS: luyen123
+      DB_HOST: database-mysql
+      DATABASE: datn
+      DB_PORT: 3306
+    ports:
+      - 8080:8080
+    networks:
+      - webnet
+    expose:
+      - 8080
+    depends_on:
+      - database-mysql
+
+networks:
+  webnet:
+    driver: bridge
+
+# B1:backend 
+# npm run build
+# docker build -f Dockerfile -t node-be .
+# B2: frontend
+# env  apiUrl: '/api', // production
+# xoa dist/build
+# npm run build
+
+#port [cloud:docker]
+#sudo docker compose -p datn up -d
+# restart lai backend

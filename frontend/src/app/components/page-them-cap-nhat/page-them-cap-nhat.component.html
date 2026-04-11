@@ -1,0 +1,102 @@
+<app-header/>
+<div class="content">
+  <app-navbar/>
+  <div class="main scroll">
+    <div style="display: flex; justify-content: center; font-size: 2rem; color: red;">Thêm mới / Cập nhật</div>
+    <div *ngIf="!isEquipment" class="dang_ky">
+      <div class="item">
+        <span>Tên thiết bị:</span>
+        <input  [(ngModel)]="equipment.ROOM_Name" style="width: 50%;"  placeholder="Nhập tên thiết bị/phòng học"/>
+      </div>
+      <div class="item">
+        <span>Tòa:</span>
+        <input  [(ngModel)]="equipment.LOCATION_Building" style="width: 50%;"/>
+      </div>
+      <div class="item">
+        <span>Tầng:</span>
+        <input  [(ngModel)]="equipment.LOCATION_Floor" style="width: 50%;"/>
+      </div>
+      <div class="item">
+        <span>Số lượng ghế:</span>
+        <input  [(ngModel)]="equipment.ROOM_Capacity" style="width: 50%;"/>
+      </div>
+      <div class="item">
+        <span>Mô tả phòng:</span>
+        <input  [(ngModel)]="equipment.ROOM_Description" style="width: 50%;"/>
+      </div>
+      <div class="item">
+        <span>Loại phòng:</span>
+        <input [(ngModel)]="equipment.ROOM_TYPE_Name" style="width: 50%;"/>
+      </div>
+      <div class="item">
+        <span>Mô tả loại phòng:</span>
+        <input  [(ngModel)]="equipment.ROOM_TYPE_Description" style="width: 50%;"/>
+      </div>
+      <div class="item">
+        <span>Trạng thái phòng:</span>
+        <select [(ngModel)]="equipment.ROOM_Status" style="width: 50%;">
+          <option value="Có sẵn">Có sẵn</option>
+          <option value =" thiết bị">Hỏng thiết bị</option>
+        </select>
+      </div>
+      <div (click)="submit()"  class="button ">
+        Xác nhận
+      </div>
+      <br/>
+      <br/>
+      </div>
+    <div *ngIf="isEquipment" class="dang_ky">
+      <div class="item">
+        <span>Tên thiết bị:</span>
+        <input [(ngModel)]="equipment.EQUIPMENT_ITEM_Name" style="width: 80%;" placeholder="Nhập tên thiết bị/phòng học"/>
+      </div>
+      <div class="item">
+        <span>Mô tả thiết bị:</span>
+        <input [(ngModel)]="equipment.EQUIPMENT_ITEM_Description" style="width: 80%;" placeholder=""/>
+      </div>
+      <div class="item">
+        <span>Giá:</span>
+        <input [(ngModel)]="equipment.EQUIPMENT_ITEM_Price" type="number" style="width: 80%;" placeholder=""/>
+      </div>
+      <div class="item">
+        <span>Hãng sản xuất:</span>
+        <input [(ngModel)]="equipment.EQUIPMENT_MODEL_Branch" style="width: 80%;" placeholder=""/>
+      </div>
+      <div class="item">
+        <span>Tên hãng sản xuất:</span>
+        <input [(ngModel)]="equipment.EQUIPMENT_MODEL_Name" style="width: 80%;" placeholder=""/>
+      </div>
+      <div class="item">
+        <span>Tên loại thiết bị:</span>
+        <input [(ngModel)]="equipment.EQUIPMENT_TYPE_Name" style="width: 80%;" placeholder=""/>
+      </div>
+      <div class="item">
+        <span>Mô tả loại thiết bị:</span>
+        <input [(ngModel)]="equipment.EQUIPMENT_TYPE_Description" style="width: 80%;" placeholder=""/>
+      </div>
+            <div class="item">
+        <span>Ngày mua:</span>
+        <input [(ngModel)]="equipment.EQUIPMENT_ITEM_PurchaseDate" type="date" style="width: 80%;"/>
+      </div>
+      <div class="item">
+        <span>Số lượng:</span>
+          <input type="number" [(ngModel)]="equipment.EQUIPMENT_ITEM_Quantity" style="width: 80%;" />
+      </div>
+      <div class="item">
+        <span>Trạng thái:</span>
+        <select [(ngModel)]="equipment.EQUIPMENT_ITEM_Status" style="width: 50%;">
+          <option value="Có sẵn">Có sẵn</option>
+          <option value ="Mất">Mất</option>
+          <option value ="Hỏng">Hỏng</option>
+        </select>
+      </div>
+      <div (click)="submit()" class="button">
+        Xác nhận
+      </div>
+      <br/>
+      <br/>
+      </div>
+  </div>
+    <app-user/>
+</div>
+<app-footer/>
