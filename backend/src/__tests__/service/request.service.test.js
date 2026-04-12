@@ -1,7 +1,17 @@
-import RequestService from '../../module/request/request.service.js'
+jest.mock('../../config/configDB', () => ({
+	query: jest.fn(),
+	execute: jest.fn(),
+	getConnection: jest.fn(),
+	beginTransaction: jest.fn(),
+	commit: jest.fn(),
+	rollback: jest.fn(),
+	end: jest.fn(),
+}))
 
-jest.mock('../../module/request/request.dao.js')
+jest.mock('../../module/request/request.dao')
+
+const RequestService = require('../../module/request/request.service')
 
 describe('RequestService', () => {
-	// TODO: add tests for requestSlip, getRequestSlip, approvedSlip
+	it.todo('add tests for requestSlip, getRequestSlip, approvedSlip')
 })

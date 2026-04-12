@@ -1,7 +1,17 @@
-import BorrowReturnService from '../../module/borrowReturn/borrowReturn.service.js'
+jest.mock('../../config/configDB', () => ({
+	query: jest.fn(),
+	execute: jest.fn(),
+	getConnection: jest.fn(),
+	beginTransaction: jest.fn(),
+	commit: jest.fn(),
+	rollback: jest.fn(),
+	end: jest.fn(),
+}))
 
-jest.mock('../../module/borrowReturn/borrowReturn.dao.js')
+jest.mock('../../module/borrowReturn/borrowReturn.dao')
+
+const BorrowReturnService = require('../../module/borrowReturn/borrowReturn.service')
 
 describe('BorrowReturnService', () => {
-	// TODO: add tests for createBorrowReturnSlip, borrowReturnSlip, findAllBorrowReturnSlip
+	it.todo('add tests for createBorrowReturnSlip, borrowReturnSlip, findAllBorrowReturnSlip')
 })

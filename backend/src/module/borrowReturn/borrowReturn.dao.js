@@ -369,6 +369,7 @@ const createBorrowReturnSlipDAO = (data) => {
 
 
 module.exports = {
+	convertDateArray,
 	findAllBorrowReturn,
 	findByUserBorrowReturnSlipDAO,
 	findAllBorrowReturnSlipDAO,
