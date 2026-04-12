@@ -1,14 +1,20 @@
-import BorrowReturnDAO from '../../module/borrowReturn/borrowReturn.dao.js'
+jest.mock('../../config/configDB', () => ({
+	query: jest.fn(),
+	execute: jest.fn(),
+	beginTransaction: jest.fn((cb) => cb && cb(null)),
+	commit: jest.fn((cb) => cb && cb(null)),
+	rollback: jest.fn((cb) => cb && cb(null)),
+	end: jest.fn()
+}))
 
-jest.mock('../../config/configDB.js')
-import pool from '../../config/configDB.js'
+const BorrowReturnDAO = require('../../module/borrowReturn/borrowReturn.dao')
 
 describe('BorrowReturnDAO', () => {
 	describe('convertDateArray()', () => {
-		it('should convert date array to correct format', () => {
-			// TODO: add test cases based on actual implementation
+		it('loads module (placeholder)', () => {
+			expect(BorrowReturnDAO).toBeTruthy()
 		})
 	})
 
-	// TODO: add tests for createBorrowReturnSlipDAO, borrowReturnSlipDAO, findAllBorrowReturn
+	// TODO: add tests for convertDateArray edge cases, createBorrowReturnSlipDAO, borrowReturnSlipDAO, findAllBorrowReturn
 })

@@ -1,22 +1,17 @@
-import EquipmentDAO from '../../module/equipment/equipment.dao.js'
+jest.mock('../../config/configDB', () => ({
+	query: jest.fn(),
+	execute: jest.fn(),
+	beginTransaction: jest.fn((cb) => cb && cb(null)),
+	commit: jest.fn((cb) => cb && cb(null)),
+	rollback: jest.fn((cb) => cb && cb(null)),
+	end: jest.fn()
+}))
 
-jest.mock('../../config/configDB.js')
-import pool from '../../config/configDB.js'
+const EquipmentDAO = require('../../module/equipment/equipment.dao')
 
 describe('EquipmentDAO', () => {
-	let mockConnection
-
-	beforeEach(() => {
-		mockConnection = {
-			query: jest.fn(),
-			execute: jest.fn(),
-			release: jest.fn(),
-			beginTransaction: jest.fn(),
-			commit: jest.fn(),
-			rollback: jest.fn()
-		}
-		pool.getConnection = jest.fn().mockResolvedValue(mockConnection)
-		pool.execute = jest.fn()
+	it('loads module (placeholder)', () => {
+		expect(EquipmentDAO).toBeTruthy()
 	})
 
 	// TODO: add tests for findAll, findOne, createEquipment, updateEquipment, deleteEquipment

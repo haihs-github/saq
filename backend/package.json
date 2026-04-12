@@ -7,9 +7,9 @@
     "dev": "nodemon src/index.js",
     "build": "babel src -d build --copy-files",
     "start": "node build/index.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test": "cross-env NODE_ENV=test jest",
+    "test:watch": "cross-env NODE_ENV=test jest --watch",
+    "test:coverage": "cross-env NODE_ENV=test jest --coverage"
   },
   "keywords": [],
   "author": "LuongLuyen",
@@ -25,6 +25,8 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "babel-jest": "^30.3.0",
+    "cross-env": "^7.0.3",
     "jest": "^30.3.0",
     "jest-mock-extended": "^4.0.0",
     "mysql2": "^3.21.1",

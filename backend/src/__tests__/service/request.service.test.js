@@ -1,7 +1,11 @@
-import RequestService from '../../module/request/request.service.js'
+jest.mock('../../module/request/request.dao')
 
-jest.mock('../../module/request/request.dao.js')
+const RequestService = require('../../module/request/request.service')
 
 describe('RequestService', () => {
+	it('loads module (placeholder)', () => {
+		expect(RequestService).toBeTruthy()
+	})
+
 	// TODO: add tests for requestSlip, getRequestSlip, approvedSlip
 })
