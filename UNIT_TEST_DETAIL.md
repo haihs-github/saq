@@ -760,3 +760,639 @@ _(Dán ảnh vào đây)_
 > 📸 **[SCREENSHOT 8]** Click vào `equipment.service.js` trong trang HTML → chụp chi tiết từng dòng
 
 _(Dán ảnh vào đây)_
+# UNIT TEST DETAIL - borrowReturn.service.js
+
+> **File:** `backend/src/module/borrowReturn/borrowReturn.service.js`
+> **Framework:** Jest | **Mock:** `jest.mock('./borrowReturn.dao')`
+> **Nghiệp vụ hệ thống:** Quản lý mượn/trả thiết bị và phòng học.
+> - Giáo viên tạo phiếu mượn thiết bị hoặc phòng
+> - Phiếu mượn có 2 trạng thái: `'Chưa trả'` → `'Đã trả'`
+> - Khi mượn: status thiết bị/phòng đổi thành `'Đang mượn'`
+> - Khi trả: status thiết bị/phòng đổi về `'Có sẵn'`, ghi nhận ngày trả thực tế
+> - `convertDateArray([tiet, ngay])` tính giờ bắt đầu từ tiết học (tiết 1 = 7:00, mỗi tiết 45 phút)
+
+---
+
+## 1. findAllBorrowReturnSlip()
+
+> **Nghiệp vụ:** Ban quản lý xem toàn bộ danh sách phiếu mượn trong hệ thống (cả Chưa trả và Đã trả). Kết quả JOIN 3 bảng: BORROW_RETURN_SLIP + BORROW_RETURN_DATE + BORROW_RETURN_ITEM. Dùng để theo dõi tình trạng mượn trả tổng thể.
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_BR_FINDALL_SLIP_01 | Lấy danh sách khi có nhiều phiếu mượn (cả Chưa trả và Đã trả) | DAO trả về `[{BORROW_RETURN_SLIP_ID:1, BORROW_RETURN_SLIP_Status:'Chưa trả'}, {BORROW_RETURN_SLIP_ID:2, BORROW_RETURN_SLIP_Status:'Đã trả'}]` | Mảng 2 phần tử đúng như DAO trả về | Happy path: có cả 2 trạng thái |
+| TC_BR_FINDALL_SLIP_02 | Trả về mảng rỗng khi chưa có phiếu mượn nào | DAO trả về `undefined` (DAO dùng `results[0]`) | `undefined` | Hệ thống mới, chưa có phiếu mượn |
+| TC_BR_FINDALL_SLIP_03 | Trả về đúng cấu trúc dữ liệu JOIN 3 bảng | DAO trả về `{BORROW_RETURN_SLIP_ID:1, BORROW_RETURN_SLIP_Name:'Phiếu 1', BORROW_RETURN_SLIP_Status:'Chưa trả', USER_ID:1, BORROW_RETURN_DATE_ID:1, DATE_BorrowDate:'2024-01-10', DATE_ExceptionReturnDate:'2024-01-12', BORROW_RETURN_ITEM_ID:1, EQUIPMENT_ITEM_ID:1}` | Object có đủ field từ 3 bảng | Kiểm tra data integrity |
+| TC_BR_FINDALL_SLIP_04 | Gọi Dao.findAllBorrowReturnSlipDAO đúng 1 lần | DAO mock trả về `undefined` | `Dao.findAllBorrowReturnSlipDAO` được gọi đúng 1 lần | CheckDB: không cần tham số |
+| TC_BR_FINDALL_SLIP_05 | Trả về error object khi DB mất kết nối (không throw) | DAO reject với `new Error('ECONNREFUSED')` | Trả về error object | try/catch bắt lỗi |
+| TC_BR_FINDALL_SLIP_06 | Trả về error object khi DB timeout | DAO reject với `new Error('Query timeout')` | Trả về error object | Xử lý timeout gracefully |
+
+---
+
+## 2. findByUserBorrowReturnSlip()
+
+> **Nghiệp vụ:** Giáo viên xem lịch sử phiếu mượn của chính mình theo USER_ID. Kết quả JOIN BORROW_RETURN_SLIP + BORROW_RETURN_DATE, sắp xếp theo ID DESC (mới nhất trước). ID lấy từ `req.params.id` (string từ URL).
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_BR_FINDBYUSER_01 | Lấy danh sách phiếu mượn của user có nhiều phiếu | `req.params.id = "1"`, DAO trả về `[{ID:2, BORROW_RETURN_SLIP_Status:'Chưa trả'}, {ID:1, BORROW_RETURN_SLIP_Status:'Đã trả'}]` | Mảng 2 phần tử, sắp xếp ID DESC | Happy path: user có nhiều phiếu |
+| TC_BR_FINDBYUSER_02 | Lấy danh sách phiếu mượn của user chỉ có 1 phiếu | `req.params.id = "2"`, DAO trả về `[{ID:1, BORROW_RETURN_SLIP_Status:'Chưa trả'}]` | Mảng 1 phần tử | User mới mượn lần đầu |
+| TC_BR_FINDBYUSER_03 | Trả về mảng rỗng khi user chưa có phiếu mượn nào | `req.params.id = "3"`, DAO trả về `[]` | `[]` | User chưa từng mượn thiết bị |
+| TC_BR_FINDBYUSER_04 | Trả về mảng rỗng khi user ID không tồn tại | `req.params.id = "9999"`, DAO trả về `[]` | `[]` | ID không tồn tại trong DB |
+| TC_BR_FINDBYUSER_05 | Trả về cả phiếu Chưa trả và Đã trả của user | `req.params.id = "1"`, DAO trả về `[{BORROW_RETURN_SLIP_Status:'Chưa trả'}, {BORROW_RETURN_SLIP_Status:'Đã trả'}]` | Mảng chứa cả 2 trạng thái | Không lọc theo status |
+| TC_BR_FINDBYUSER_06 | Trả về đúng cấu trúc dữ liệu (có ngày mượn, ngày trả dự kiến) | `req.params.id = "1"`, DAO trả về `[{ID:1, BORROW_RETURN_SLIP_Name:'Phiếu 1', BORROW_RETURN_SLIP_Status:'Chưa trả', USER_ID:1, DATE_BorrowDate:'2024-01-10 07:00:00', DATE_ExceptionReturnDate:'2024-01-10 08:30:00', DATE_ActualReturnDate:null}]` | Object có đủ field ngày tháng | Kiểm tra data integrity |
+| TC_BR_FINDBYUSER_07 | CheckDB: Dao được gọi với đúng userId từ req.params | `req.params.id = "5"` | `Dao.findByUserBorrowReturnSlipDAO` được gọi với `"5"` | req.params luôn là string |
+| TC_BR_FINDBYUSER_08 | Trả về error object khi DB lỗi (không throw) | DAO reject với `new Error('DB error')` | Trả về error object | try/catch bắt lỗi |
+
+---
+
+## 3. findBorrowReturnSlipDetail()
+
+> **Nghiệp vụ:** Xem chi tiết 1 phiếu mượn theo ID phiếu — hiển thị danh sách thiết bị/phòng trong phiếu đó. Dùng khi giáo viên hoặc ban quản lý muốn xem chi tiết phiếu để xử lý trả. **Lưu ý:** `findBorrowReturnSlipDetailDAO` không có trong DAO exports hiện tại — đây là bug thực tế cần ghi nhận.
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_BR_FINDDETAIL_01 | Lấy chi tiết phiếu mượn thiết bị theo ID hợp lệ | `req.params.id = "1"`, DAO trả về `[{BORROW_RETURN_SLIP_ID:1, EQUIPMENT_ITEM_Name:'EPX200-001', EQUIPMENT_ITEM_Status:'Đang mượn'}]` | Mảng chi tiết phiếu mượn | Happy path: phiếu mượn thiết bị |
+| TC_BR_FINDDETAIL_02 | Lấy chi tiết phiếu mượn phòng theo ID hợp lệ | `req.params.id = "2"`, DAO trả về `[{BORROW_RETURN_SLIP_ID:2, ROOM_Name:'A101', ROOM_Status:'Đang mượn'}]` | Mảng chi tiết phiếu mượn phòng | Happy path: phiếu mượn phòng |
+| TC_BR_FINDDETAIL_03 | Trả về undefined/rỗng khi ID phiếu không tồn tại | `req.params.id = "9999"`, DAO trả về `[]` | `[]` | ID không tồn tại |
+| TC_BR_FINDDETAIL_04 | Phiếu có nhiều thiết bị — trả về đủ tất cả | `req.params.id = "1"`, DAO trả về mảng 3 phần tử (3 thiết bị) | Mảng 3 phần tử | Phiếu mượn nhiều thiết bị cùng lúc |
+| TC_BR_FINDDETAIL_05 | CheckDB: Dao được gọi với đúng slipId từ req.params | `req.params.id = "3"` | `Dao.findBorrowReturnSlipDetailDAO` được gọi với `"3"` | req.params luôn là string |
+| TC_BR_FINDDETAIL_06 | Trả về error object khi DAO không tồn tại (bug thực tế) | `findBorrowReturnSlipDetailDAO` không được export từ DAO | Trả về error object (TypeError) | Bug: DAO thiếu hàm này — service sẽ throw |
+| TC_BR_FINDDETAIL_07 | Trả về error object khi DB lỗi (không throw) | DAO reject với `new Error('DB error')` | Trả về error object | try/catch bắt lỗi |
+
+---
+
+## 4. createBorrowReturnSlip()
+
+> **Nghiệp vụ:** Giáo viên tạo phiếu mượn thiết bị hoặc phòng. Phân biệt loại qua `data.equipments[0].EQUIPMENT_ITEM_Name`:
+> - Có `EQUIPMENT_ITEM_Name` → mượn thiết bị: INSERT SLIP + DATE + ITEM, UPDATE status thiết bị → `'Đang mượn'`
+> - Không có → mượn phòng: INSERT SLIP + DATE + ITEM, UPDATE status phòng → `'Đang mượn'`
+> `StartDate` và `EndDate` là `[tiet, ngay]` — được convert bằng `convertDateArray()`
+> Phiếu mới luôn có status `'Chưa trả'`
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_BR_CREATE_01 | Tạo phiếu mượn thiết bị thành công | `req.body = {BORROW_RETURN_SLIP_Name:'Phiếu mượn 1', Note:'Ghi chú', USER:{ID:1}, StartDate:['1','2024-01-10'], EndDate:['3','2024-01-10'], equipments:[{ID:1, EQUIPMENT_ITEM_Name:'EPX200-001'}]}`, DAO trả về `{borrowReturnSlipId:1, equipments:[1], message:'Tạo phiếu mượn thành công'}` | `{borrowReturnSlipId:1, message:'Tạo phiếu mượn thành công'}` | Happy path: mượn thiết bị |
+| TC_BR_CREATE_02 | Tạo phiếu mượn phòng thành công | `req.body = {..., equipments:[{ID:1, ROOM_Name:'A101'}]}` (không có EQUIPMENT_ITEM_Name), DAO trả về `{borrowReturnSlipId:2, message:'Tạo phiếu mượn thành công'}` | `{borrowReturnSlipId:2, message:'Tạo phiếu mượn thành công'}` | Happy path: mượn phòng |
+| TC_BR_CREATE_03 | Tạo phiếu mượn nhiều thiết bị cùng lúc | `req.body = {..., equipments:[{ID:1, EQUIPMENT_ITEM_Name:'EPX200-001'}, {ID:4, EQUIPMENT_ITEM_Name:'DL15-001'}]}`, DAO trả về `{borrowReturnSlipId:3, equipments:[1,4], message:'Tạo phiếu mượn thành công'}` | `{equipments:[1,4], message:'Tạo phiếu mượn thành công'}` | Mượn nhiều thiết bị |
+| TC_BR_CREATE_04 | Phiếu mượn mới luôn có status 'Chưa trả' | `req.body = {...}`, DAO trả về `{borrowReturnSlipId:1, message:'Tạo phiếu mượn thành công'}` | `result.message === 'Tạo phiếu mượn thành công'` | Status 'Chưa trả' được set trong SQL |
+| TC_BR_CREATE_05 | Truyền đúng req.body xuống DAO | `req.body = {BORROW_RETURN_SLIP_Name:'Test', Note:'', USER:{ID:1}, StartDate:['1','2024-01-10'], EndDate:['2','2024-01-10'], equipments:[{ID:1, EQUIPMENT_ITEM_Name:'EPX200-001'}]}` | `Dao.createBorrowReturnSlipDAO` được gọi với đúng `req.body` | CheckDB: không biến đổi dữ liệu |
+| TC_BR_CREATE_06 | Trả về error khi DB lỗi trong transaction (không throw) | DAO reject với `new Error('DB transaction failed')` | Trả về error object | try/catch bắt lỗi |
+| TC_BR_CREATE_07 | Gọi Dao.createBorrowReturnSlipDAO đúng 1 lần | DAO trả về `{message:'Tạo phiếu mượn thành công'}` | `Dao.createBorrowReturnSlipDAO` được gọi đúng 1 lần | CheckDB |
+| TC_BR_CREATE_08 | Trả về borrowReturnSlipId sau khi tạo thành công | DAO trả về `{borrowReturnSlipId:99, message:'Tạo phiếu mượn thành công'}` | `result.borrowReturnSlipId === 99` | ID phiếu mượn mới |
+
+---
+
+## 5. borrowReturnSlip()
+
+> **Nghiệp vụ:** Xử lý trả thiết bị hoặc phòng. `req.body` là mảng các item cần trả. Logic:
+> - Cập nhật BORROW_RETURN_SLIP status → `'Đã trả'`
+> - Cập nhật DATE_ActualReturnDate = NOW() (giờ VN +07:00)
+> - Nếu item có `EQUIPMENT_ITEM_ID`: cập nhật status thiết bị `'Đang mượn'` → `'Có sẵn'`
+> - Nếu item có `ROOM_ID`: cập nhật status phòng `'Đang mượn'` → `'Có sẵn'`
+> - Toàn bộ trong 1 transaction — rollback nếu bất kỳ bước nào lỗi
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_BR_RETURN_01 | Trả thiết bị thành công — status thiết bị đổi về 'Có sẵn' | `req.body = [{BORROW_RETURN_SLIP_ID:1, items:[{EQUIPMENT_ITEM_ID:1, EQUIPMENT_ITEM_Status:'Đang mượn'}]}]`, DAO trả về `true` | `true` | Happy path: trả thiết bị |
+| TC_BR_RETURN_02 | Trả phòng thành công — status phòng đổi về 'Có sẵn' | `req.body = [{BORROW_RETURN_SLIP_ID:2, items:[{ROOM_ID:1, ROOM_Status:'Đang mượn'}]}]`, DAO trả về `true` | `true` | Happy path: trả phòng |
+| TC_BR_RETURN_03 | Trả nhiều thiết bị cùng lúc trong 1 phiếu | `req.body = [{BORROW_RETURN_SLIP_ID:1, items:[{EQUIPMENT_ITEM_ID:1, EQUIPMENT_ITEM_Status:'Đang mượn'}, {EQUIPMENT_ITEM_ID:4, EQUIPMENT_ITEM_Status:'Đang mượn'}]}]`, DAO trả về `true` | `true` | Trả nhiều thiết bị |
+| TC_BR_RETURN_04 | Trả về error khi data rỗng (DAO validate) | `req.body = []`, DAO reject với `new Error('Data is empty or invalid')` | Trả về error object | DAO kiểm tra `data.length === 0` |
+| TC_BR_RETURN_05 | Trả về error khi BORROW_RETURN_SLIP_ID không hợp lệ | `req.body = [{BORROW_RETURN_SLIP_ID: null, items:[]}]`, DAO reject với `new Error('Invalid BORROW_RETURN_SLIP_ID')` | Trả về error object | DAO validate slipId |
+| TC_BR_RETURN_06 | Trả về error khi transaction rollback (UPDATE SLIP thất bại) | DAO reject với `new Error('DB error on UPDATE SLIP')` | Trả về error object | Transaction rollback |
+| TC_BR_RETURN_07 | Trả về error khi transaction rollback (UPDATE DATE thất bại) | DAO reject với `new Error('DB error on UPDATE DATE')` | Trả về error object | Transaction rollback bước 2 |
+| TC_BR_RETURN_08 | Trả về error khi transaction rollback (UPDATE EQUIPMENT thất bại) | DAO reject với `new Error('DB error on UPDATE EQUIPMENT')` | Trả về error object | Transaction rollback bước 3 |
+| TC_BR_RETURN_09 | Truyền đúng req.body xuống DAO | `req.body = [{BORROW_RETURN_SLIP_ID:1, items:[...]}]` | `Dao.borrowReturnSlipDAO` được gọi với đúng `req.body` | CheckDB |
+| TC_BR_RETURN_10 | Gọi Dao.borrowReturnSlipDAO đúng 1 lần | DAO trả về `true` | `Dao.borrowReturnSlipDAO` được gọi đúng 1 lần | CheckDB |
+| TC_BR_RETURN_11 | Trả về error khi DB mất kết nối (không throw) | DAO reject với `new Error('ECONNREFUSED')` | Trả về error object | try/catch bắt lỗi |
+
+---
+
+## 6. findAllBorrowReturn()
+
+> **Nghiệp vụ:** Ban quản lý xem toàn bộ chi tiết mượn trả — JOIN 9 bảng để lấy đầy đủ thông tin: phiếu mượn, user, ngày tháng, thiết bị (model, type), phòng (room type). Dùng để xuất báo cáo Excel và theo dõi tổng thể tài sản.
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_BR_FINDALL_01 | Lấy danh sách khi có nhiều bản ghi mượn trả | DAO trả về mảng 5 phần tử với đầy đủ thông tin | Mảng 5 phần tử đúng như DAO trả về | Happy path |
+| TC_BR_FINDALL_02 | Trả về mảng rỗng khi chưa có phiếu mượn nào | DAO trả về `[]` | `[]` | Hệ thống mới |
+| TC_BR_FINDALL_03 | Trả về đúng cấu trúc dữ liệu JOIN 9 bảng | DAO trả về `[{BORROW_RETURN_SLIP_ID:1, BORROW_RETURN_SLIP_Status:'Chưa trả', USER_ID:1, USER_FullName:'Nguyễn Văn Tuấn', USER_Role:'Giáo viên', DATE_BorrowDate:'2024-01-10', EQUIPMENT_ITEM_ID:1, EQUIPMENT_ITEM_Name:'EPX200-001', EQUIPMENT_MODEL_Name:'Epson X200', EQUIPMENT_TYPE_Name:'Projector', ROOM_ID:null, ROOM_Name:null}]` | Object có đủ field từ 9 bảng | Kiểm tra data integrity |
+| TC_BR_FINDALL_04 | Trả về cả phiếu Chưa trả và Đã trả | DAO trả về `[{BORROW_RETURN_SLIP_Status:'Chưa trả'}, {BORROW_RETURN_SLIP_Status:'Đã trả'}]` | Mảng chứa cả 2 trạng thái | Không lọc theo status |
+| TC_BR_FINDALL_05 | Trả về bản ghi mượn thiết bị (có EQUIPMENT_ITEM_ID, ROOM_ID = null) | DAO trả về `[{EQUIPMENT_ITEM_ID:1, EQUIPMENT_ITEM_Name:'EPX200-001', ROOM_ID:null}]` | Object có EQUIPMENT_ITEM_ID, ROOM_ID là null | LEFT JOIN → phòng null khi mượn thiết bị |
+| TC_BR_FINDALL_06 | Trả về bản ghi mượn phòng (có ROOM_ID, EQUIPMENT_ITEM_ID = null) | DAO trả về `[{ROOM_ID:1, ROOM_Name:'A101', EQUIPMENT_ITEM_ID:null}]` | Object có ROOM_ID, EQUIPMENT_ITEM_ID là null | LEFT JOIN → thiết bị null khi mượn phòng |
+| TC_BR_FINDALL_07 | Gọi Dao.findAllBorrowReturn đúng 1 lần, không tham số | DAO mock trả về `[]` | `Dao.findAllBorrowReturn` được gọi đúng 1 lần | CheckDB |
+| TC_BR_FINDALL_08 | Trả về error object khi DB mất kết nối (không throw) | DAO reject với `new Error('ECONNREFUSED')` | Trả về error object | try/catch bắt lỗi |
+| TC_BR_FINDALL_09 | Trả về error object khi DB timeout | DAO reject với `new Error('Query timeout')` | Trả về error object | Xử lý timeout gracefully |
+
+---
+
+## Tổng kết borrowReturn.service.js
+
+| Hàm | Số test case | Độ ưu tiên | Nghiệp vụ chính |
+|---|---|---|---|
+| `findAllBorrowReturnSlip()` | 6 | TRUNG BÌNH | Ban quản lý xem tổng danh sách phiếu |
+| `findByUserBorrowReturnSlip()` | 8 | TRUNG BÌNH | Giáo viên xem lịch sử mượn của mình |
+| `findBorrowReturnSlipDetail()` | 7 | TRUNG BÌNH | Xem chi tiết 1 phiếu để xử lý trả |
+| `createBorrowReturnSlip()` | 8 | CAO | Tạo phiếu mượn thiết bị/phòng |
+| `borrowReturnSlip()` | 11 | CAO | Xử lý trả — transaction phức tạp nhất |
+| `findAllBorrowReturn()` | 9 | TRUNG BÌNH | Báo cáo tổng thể mượn trả |
+| **TỔNG** | **49** | | |
+
+> **Lưu ý nghiệp vụ quan trọng:**
+> - Status phiếu mượn: `'Chưa trả'` → `'Đã trả'`
+> - Status thiết bị/phòng khi mượn: `'Có sẵn'` → `'Đang mượn'`
+> - Status thiết bị/phòng khi trả: `'Đang mượn'` → `'Có sẵn'`
+> - `borrowReturnSlip` dùng transaction — rollback toàn bộ nếu bất kỳ bước nào lỗi
+> - `findBorrowReturnSlipDetailDAO` **không được export** từ DAO hiện tại — bug thực tế
+> - `findAllBorrowReturnSlipDAO` trả về `results[0]` (1 object) thay vì mảng — cần lưu ý khi test
+
+---
+
+## 1.5. Execution Report — borrowReturn.service.js
+
+> **Lệnh chạy:**
+> ```bash
+> npx jest src/__tests__/service/borrowReturn.service.test.js --no-coverage --verbose
+> ```
+
+### Tóm tắt kết quả
+
+| Hạng mục | Kết quả |
+|---|---|
+| Test Suites | 1 passed / 1 total |
+| Tests passed | _(điền sau khi chạy)_ |
+| Tests failed | _(điền sau khi chạy)_ |
+| Thời gian chạy | _(điền sau khi chạy)_ |
+
+### Chi tiết pass/fail theo nhóm
+
+| Nhóm hàm | Số TC | Passed | Failed |
+|---|---|---|---|
+| `findAllBorrowReturn()` | 6 | | |
+| `findAllBorrowReturnSlip()` | 5 | | |
+| `findByUserBorrowReturnSlip()` | 5 | | |
+| `findBorrowReturnSlipDetail()` | 1 | | |
+| `createBorrowReturnSlip()` | 6 | | |
+| `borrowReturnSlip()` | 9 | | |
+| **TỔNG** | **32** | | |
+
+### Screenshot — Terminal output
+
+> 📸 **[CHỤP MÀN HÌNH 1]**
+> Chụp toàn bộ terminal từ dòng `PASS src/__tests__/service/borrowReturn.service.test.js`
+> đến dòng `Tests: 32 passed, 32 total`
+
+_(Dán ảnh vào đây)_
+
+---
+
+# 1.6. Code Coverage Report — borrowReturn.service.js
+
+> **Lệnh chạy:**
+> ```bash
+> npx jest src/__tests__/service/borrowReturn.service.test.js --coverage --verbose
+> ```
+> **HTML report:** Mở file `backend/coverage/lcov-report/borrowReturn/borrowReturn.service.js.html` bằng browser
+
+### Tóm tắt độ bao phủ
+
+| File | Statements % | Branches % | Functions % | Lines % |
+|---|---|---|---|---|
+| `borrowReturn.service.js` | _(điền)_ | _(điền)_ | _(điền)_ | _(điền)_ |
+
+### Mục tiêu coverage
+
+| Chỉ số | Mục tiêu | Thực tế | Đạt? |
+|---|---|---|---|
+| Statements | ≥ 80% | | |
+| Branches | ≥ 80% | | |
+| Functions | ≥ 80% | | |
+| Lines | ≥ 80% | | |
+
+### Cách lấy số liệu để điền vào 2 bảng trên
+
+Sau khi chạy lệnh `--coverage`, mở file:
+```
+backend/coverage/lcov-report/borrowReturn/borrowReturn.service.js.html
+```
+Nhìn vào 4 con số ở đầu trang (ví dụ: `100% Statements 42/42`) → điền vào bảng.
+
+### Screenshot 1 — Bảng coverage trong terminal
+
+> 📸 **[CHỤP MÀN HÌNH 2]**
+> Chụp bảng text coverage xuất hiện cuối terminal sau khi chạy `--coverage`
+> (Bảng có dạng: `File | % Stmts | % Branch | % Funcs | % Lines | Uncovered Lines`)
+
+_(Dán ảnh vào đây)_
+
+### Screenshot 2 — HTML Coverage Report (tổng quan)
+
+> 📸 **[CHỤP MÀN HÌNH 3]**
+> Mở `backend/coverage/lcov-report/index.html` bằng browser → chụp trang tổng quan
+
+_(Dán ảnh vào đây)_
+
+### Screenshot 3 — HTML Coverage Report (chi tiết borrowReturn.service.js)
+
+> 📸 **[CHỤP MÀN HÌNH 4]**
+> Trong trang HTML, click vào thư mục `borrowReturn` → click vào `borrowReturn.service.js`
+> Chụp màn hình trang chi tiết (dòng xanh = covered, đỏ = not covered)
+
+_(Dán ảnh vào đây)_
+
+
+---
+
+# UNIT TEST DETAIL - request.service.js
+
+> **File:** `backend/src/module/request/request.service.js`
+> **Framework:** Jest | **Mock:** `jest.mock('./request.dao')`
+> **Nghiệp vụ hệ thống:** Quản lý yêu cầu mua sắm/bổ sung thiết bị mới.
+> - **Giáo viên** tạo phiếu yêu cầu (`requestSlip`) khi cần thiết bị mới chưa có trong hệ thống
+> - **Ban giám hiệu / Ban quản lý** xem danh sách yêu cầu (`getRequestSlip`) để xét duyệt
+> - **Ban giám hiệu / Ban quản lý** phê duyệt hoặc từ chối yêu cầu (`approvedSlip`)
+> - Phiếu yêu cầu có 3 trạng thái: `'Chưa duyệt'` → `'Đã duyệt'` hoặc `'Từ chối'`
+> - Khi duyệt: status các thiết bị trong phiếu được cập nhật → `'Có sẵn'`
+> - Phiếu yêu cầu có thể có hoặc không có danh sách items (REQUEST_ITEM)
+
+---
+
+## 1. requestSlip()
+
+> **Nghiệp vụ:** Giáo viên tạo phiếu yêu cầu mua sắm thiết bị mới. DAO thực hiện transaction:
+> 1. INSERT REQUEST_SLIP với status = `'Chưa duyệt'`, ngày tạo = NOW()
+> 2. Nếu có `data.items` → INSERT từng REQUEST_ITEM liên kết với phiếu
+> 3. Nếu không có items → commit ngay sau bước 1
+> Trả về `{slipId}` — ID của phiếu vừa tạo.
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_REQ_CREATE_01 | Tạo phiếu yêu cầu thành công với danh sách thiết bị cần mua | `req.body = {REQUEST_SLIP_Name:'Yêu cầu mua máy chiếu', REQUEST_SLIP_Note:'Phòng A101 cần thêm máy chiếu', USER_ID:1, items:[{ID:null, EQUIPMENT_ITEM_Name:'Máy chiếu Epson', EQUIPMENT_ITEM_Description:'Máy chiếu 4K', EQUIPMENT_TYPE_Name:'Projector', EQUIPMENT_ITEM_Status:'Chưa có', REQUEST_ITEM_Status:'Chờ duyệt'}]}`, DAO trả về `{slipId:5}` | `{slipId:5}` | Happy path: tạo phiếu có items |
+| TC_REQ_CREATE_02 | Tạo phiếu yêu cầu với nhiều thiết bị cần mua | `req.body = {REQUEST_SLIP_Name:'Yêu cầu mua thiết bị phòng lab', USER_ID:1, items:[{EQUIPMENT_ITEM_Name:'Laptop Dell'}, {EQUIPMENT_ITEM_Name:'Loa JBL'}, {EQUIPMENT_ITEM_Name:'Máy chiếu Epson'}]}`, DAO trả về `{slipId:6}` | `{slipId:6}` | Tạo phiếu có nhiều items |
+| TC_REQ_CREATE_03 | Tạo phiếu yêu cầu không có items (chỉ có thông tin phiếu) | `req.body = {REQUEST_SLIP_Name:'Yêu cầu khẩn', REQUEST_SLIP_Note:'Cần thiết bị gấp', USER_ID:2, items:[]}`, DAO trả về `{slipId:7}` | `{slipId:7}` | DAO commit ngay sau INSERT SLIP khi items rỗng |
+| TC_REQ_CREATE_04 | Phiếu được tạo với status mặc định 'Chưa duyệt' | `req.body = {REQUEST_SLIP_Name:'Yêu cầu mới', USER_ID:1, items:[]}`, DAO trả về `{slipId:8}` | `{slipId:8}` | DAO hardcode status = 'Chưa duyệt' khi INSERT |
+| TC_REQ_CREATE_05 | Giáo viên tạo nhiều phiếu yêu cầu khác nhau (mỗi lần tạo 1 phiếu) | Gọi 2 lần với `USER_ID:1`, DAO trả về `{slipId:5}` rồi `{slipId:6}` | Lần 1: `{slipId:5}`, Lần 2: `{slipId:6}` | Mỗi lần tạo ra slipId khác nhau |
+| TC_REQ_CREATE_06 | CheckDB: Dao.requestSlip được gọi với đúng req.body (không biến đổi) | `req.body = {REQUEST_SLIP_Name:'Test', USER_ID:1, items:[]}` | `Dao.requestSlip` được gọi với đúng object req.body | Service không biến đổi dữ liệu trước khi gọi DAO |
+| TC_REQ_CREATE_07 | CheckDB: Dao.requestSlip được gọi đúng 1 lần | DAO trả về `{slipId:1}` | `Dao.requestSlip` được gọi đúng 1 lần | Không gọi thừa |
+| TC_REQ_CREATE_08 | Trả về error khi transaction INSERT REQUEST_SLIP thất bại | DAO reject với `new Error('Transaction failed: INSERT SLIP error')` | Trả về error object | Transaction rollback khi lỗi bước 1 |
+| TC_REQ_CREATE_09 | Trả về error khi transaction INSERT REQUEST_ITEM thất bại | DAO reject với `new Error('Transaction failed: INSERT ITEM error')` | Trả về error object | Transaction rollback khi lỗi bước 2 |
+| TC_REQ_CREATE_10 | Trả về error khi DB mất kết nối (không throw) | DAO reject với `new Error('ECONNREFUSED')` | Trả về error object | try/catch bắt lỗi, hệ thống không crash |
+| TC_REQ_CREATE_11 | Trả về slipId là số nguyên dương | DAO trả về `{slipId:99}` | `result.slipId === 99` và `typeof result.slipId === 'number'` | Kiểm tra kiểu dữ liệu slipId |
+
+---
+
+## 2. getRequestSlip()
+
+> **Nghiệp vụ:** Ban giám hiệu / Ban quản lý xem toàn bộ danh sách phiếu yêu cầu để xét duyệt. Kết quả JOIN 3 bảng: REQUEST_SLIP + REQUEST_ITEM + USER. Sắp xếp theo ngày tạo DESC (mới nhất trước). Hiển thị cả phiếu `'Chưa duyệt'`, `'Đã duyệt'`, `'Từ chối'`.
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_REQ_GETALL_01 | Lấy danh sách khi có nhiều phiếu với các trạng thái khác nhau | DAO trả về `[{REQUEST_SLIP_ID:3, REQUEST_SLIP_Status:'Chưa duyệt', USER_FullName:'Nguyễn Văn Tuấn'}, {REQUEST_SLIP_ID:2, REQUEST_SLIP_Status:'Đã duyệt', USER_FullName:'Lê Đình Hưng'}, {REQUEST_SLIP_ID:1, REQUEST_SLIP_Status:'Từ chối', USER_FullName:'Nguyễn Văn Tuấn'}]` | Mảng 3 phần tử, sắp xếp theo ngày tạo DESC | Happy path: có đủ 3 trạng thái |
+| TC_REQ_GETALL_02 | Lấy danh sách chỉ có phiếu 'Chưa duyệt' (hệ thống mới) | DAO trả về `[{REQUEST_SLIP_ID:1, REQUEST_SLIP_Status:'Chưa duyệt'}]` | Mảng 1 phần tử | Chưa có phiếu nào được xử lý |
+| TC_REQ_GETALL_03 | Trả về mảng rỗng khi chưa có phiếu yêu cầu nào | DAO trả về `[]` | `[]` | Hệ thống mới, chưa có yêu cầu |
+| TC_REQ_GETALL_04 | Trả về đúng cấu trúc dữ liệu JOIN 3 bảng | DAO trả về `[{REQUEST_SLIP_ID:1, REQUEST_SLIP_Name:'Yêu cầu mua máy chiếu', REQUEST_SLIP_RequestDate:'2024-06-01', REQUEST_SLIP_Status:'Chưa duyệt', REQUEST_SLIP_Description:'Cần thêm máy chiếu', REQUEST_SLIP_ApproveNotes:null, REQUESTER_ID:1, USER_FullName:'Nguyễn Văn Tuấn', REQUEST_ITEM_ID:1, EQUIPMENT_ITEM_Name:'Máy chiếu Epson', EQUIPMENT_TYPE_Name:'Projector', REQUEST_ITEM_Status:'Chờ duyệt'}]` | Object có đủ field từ 3 bảng | Kiểm tra data integrity sau JOIN |
+| TC_REQ_GETALL_05 | Phiếu có REQUEST_SLIP_ApproveNotes = null khi chưa duyệt | DAO trả về `[{REQUEST_SLIP_ID:1, REQUEST_SLIP_Status:'Chưa duyệt', REQUEST_SLIP_ApproveNotes:null}]` | `result[0].REQUEST_SLIP_ApproveNotes === null` | Ghi chú phê duyệt chỉ có sau khi xử lý |
+| TC_REQ_GETALL_06 | Phiếu có REQUEST_SLIP_ApproveNotes sau khi đã duyệt | DAO trả về `[{REQUEST_SLIP_ID:2, REQUEST_SLIP_Status:'Đã duyệt', REQUEST_SLIP_ApproveNotes:'Đồng ý mua thêm thiết bị'}]` | `result[0].REQUEST_SLIP_ApproveNotes` có giá trị | Ghi chú phê duyệt được lưu |
+| TC_REQ_GETALL_07 | Phiếu bị từ chối có ghi chú lý do | DAO trả về `[{REQUEST_SLIP_ID:3, REQUEST_SLIP_Status:'Từ chối', REQUEST_SLIP_ApproveNotes:'Ngân sách không đủ'}]` | `result[0].REQUEST_SLIP_ApproveNotes === 'Ngân sách không đủ'` | Lý do từ chối được lưu trong ApproveNotes |
+| TC_REQ_GETALL_08 | Phiếu có nhiều items (LEFT JOIN → nhiều dòng cùng REQUEST_SLIP_ID) | DAO trả về `[{REQUEST_SLIP_ID:1, EQUIPMENT_ITEM_Name:'Máy chiếu'}, {REQUEST_SLIP_ID:1, EQUIPMENT_ITEM_Name:'Laptop'}]` | Mảng 2 phần tử cùng REQUEST_SLIP_ID=1 | LEFT JOIN tạo nhiều dòng cho 1 phiếu |
+| TC_REQ_GETALL_09 | CheckDB: Dao.getAllRequestSlip được gọi đúng 1 lần | DAO mock trả về `[]` | `Dao.getAllRequestSlip` được gọi đúng 1 lần | Không gọi thừa |
+| TC_REQ_GETALL_10 | Trả về error object khi DB mất kết nối (không throw) | DAO reject với `new Error('ECONNREFUSED')` | Trả về error object | try/catch bắt lỗi |
+| TC_REQ_GETALL_11 | Trả về error object khi DB timeout | DAO reject với `new Error('Query timeout')` | Trả về error object | Xử lý timeout gracefully |
+
+---
+
+## 3. approvedSlip()
+
+> **Nghiệp vụ:** Ban giám hiệu / Ban quản lý phê duyệt hoặc từ chối phiếu yêu cầu. DAO thực hiện transaction:
+> 1. UPDATE REQUEST_SLIP: đặt `REQUEST_SLIP_Status` và `REQUEST_SLIP_ApproveNotes`
+> 2. Nếu có `data.items` → UPDATE từng EQUIPMENT_ITEM: đặt `EQUIPMENT_ITEM_Status = 'Có sẵn'` theo tên thiết bị
+> 3. Nếu không có items → commit ngay sau bước 1
+> `req.body` phải có: `{REQUEST_SLIP_ID, REQUEST_SLIP_Status, REQUEST_SLIP_ApproveNotes, items}`
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_REQ_APPROVE_01 | Phê duyệt phiếu thành công — status → 'Đã duyệt', thiết bị → 'Có sẵn' | `req.body = {REQUEST_SLIP_ID:1, REQUEST_SLIP_Status:'Đã duyệt', REQUEST_SLIP_ApproveNotes:'Đồng ý mua thêm thiết bị', items:[{EQUIPMENT_ITEM_Name:'Máy chiếu Epson'}]}`, DAO trả về `{message:'Duyệt phiếu & cập nhật thiết bị thành công'}` | `{message:'Duyệt phiếu & cập nhật thiết bị thành công'}` | Happy path: duyệt phiếu có items |
+| TC_REQ_APPROVE_02 | Từ chối phiếu — status → 'Từ chối', ghi lý do | `req.body = {REQUEST_SLIP_ID:2, REQUEST_SLIP_Status:'Từ chối', REQUEST_SLIP_ApproveNotes:'Ngân sách không đủ', items:[]}`, DAO trả về `{message:'Duyệt phiếu (không có item)'}` | `{message:'Duyệt phiếu (không có item)'}` | Từ chối không cần cập nhật thiết bị |
+| TC_REQ_APPROVE_03 | Phê duyệt phiếu có nhiều thiết bị — tất cả thiết bị → 'Có sẵn' | `req.body = {REQUEST_SLIP_ID:3, REQUEST_SLIP_Status:'Đã duyệt', REQUEST_SLIP_ApproveNotes:'OK', items:[{EQUIPMENT_ITEM_Name:'Laptop Dell'}, {EQUIPMENT_ITEM_Name:'Loa JBL'}]}`, DAO trả về `{message:'Duyệt phiếu & cập nhật thiết bị thành công'}` | `{message:'Duyệt phiếu & cập nhật thiết bị thành công'}` | Cập nhật nhiều thiết bị cùng lúc |
+| TC_REQ_APPROVE_04 | Phê duyệt phiếu không có items — chỉ cập nhật status phiếu | `req.body = {REQUEST_SLIP_ID:4, REQUEST_SLIP_Status:'Đã duyệt', REQUEST_SLIP_ApproveNotes:'Đồng ý', items:[]}`, DAO trả về `{message:'Duyệt phiếu (không có item)'}` | `{message:'Duyệt phiếu (không có item)'}` | DAO commit ngay sau UPDATE SLIP khi items rỗng |
+| TC_REQ_APPROVE_05 | Từ chối phiếu với ghi chú lý do chi tiết | `req.body = {REQUEST_SLIP_ID:5, REQUEST_SLIP_Status:'Từ chối', REQUEST_SLIP_ApproveNotes:'Thiết bị đã có đủ trong kho, không cần mua thêm', items:[]}`, DAO trả về `{message:'Duyệt phiếu (không có item)'}` | `{message:'Duyệt phiếu (không có item)'}` | Ghi chú lý do từ chối chi tiết |
+| TC_REQ_APPROVE_06 | Phê duyệt phiếu đã bị từ chối trước đó (đổi status ngược lại) | `req.body = {REQUEST_SLIP_ID:6, REQUEST_SLIP_Status:'Đã duyệt', REQUEST_SLIP_ApproveNotes:'Xem xét lại, đồng ý', items:[]}`, DAO trả về `{message:'Duyệt phiếu (không có item)'}` | `{message:'Duyệt phiếu (không có item)'}` | Có thể đổi status từ 'Từ chối' → 'Đã duyệt' |
+| TC_REQ_APPROVE_07 | CheckDB: Dao.approvedSlip được gọi với đúng req.body (không biến đổi) | `req.body = {REQUEST_SLIP_ID:1, REQUEST_SLIP_Status:'Đã duyệt', REQUEST_SLIP_ApproveNotes:'OK', items:[]}` | `Dao.approvedSlip` được gọi với đúng object req.body | Service không biến đổi dữ liệu |
+| TC_REQ_APPROVE_08 | CheckDB: Dao.approvedSlip được gọi đúng 1 lần | DAO trả về `{message:'Duyệt phiếu (không có item)'}` | `Dao.approvedSlip` được gọi đúng 1 lần | Không gọi thừa |
+| TC_REQ_APPROVE_09 | Trả về error khi transaction UPDATE REQUEST_SLIP thất bại | DAO reject với `new Error('Transaction failed: UPDATE SLIP error')` | Trả về error object | Transaction rollback khi lỗi bước 1 |
+| TC_REQ_APPROVE_10 | Trả về error khi transaction UPDATE EQUIPMENT_ITEM thất bại | DAO reject với `new Error('Transaction failed: UPDATE ITEM error')` | Trả về error object | Transaction rollback khi lỗi bước 2 |
+| TC_REQ_APPROVE_11 | Trả về error khi REQUEST_SLIP_ID không tồn tại trong DB | DAO reject với `new Error('Slip ID not found')` | Trả về error object | Phiếu không tồn tại |
+| TC_REQ_APPROVE_12 | Trả về error khi DB mất kết nối (không throw) | DAO reject với `new Error('ECONNREFUSED')` | Trả về error object | try/catch bắt lỗi |
+
+---
+
+## Tổng kết request.service.js
+
+| Hàm | Số test case | Độ ưu tiên | Nghiệp vụ chính |
+|---|---|---|---|
+| `requestSlip()` | 11 | CAO | Giáo viên tạo phiếu yêu cầu mua thiết bị |
+| `getRequestSlip()` | 11 | TRUNG BÌNH | Ban quản lý xem danh sách phiếu để xét duyệt |
+| `approvedSlip()` | 12 | CAO | Phê duyệt / từ chối phiếu, cập nhật status thiết bị |
+| **TỔNG** | **34** | | |
+
+> **Lưu ý nghiệp vụ quan trọng:**
+> - Status phiếu yêu cầu: `'Chưa duyệt'` → `'Đã duyệt'` hoặc `'Từ chối'`
+> - `requestSlip` hardcode status = `'Chưa duyệt'` khi tạo — không nhận status từ client
+> - `approvedSlip` cập nhật EQUIPMENT_ITEM theo **tên thiết bị** (`EQUIPMENT_ITEM_Name`), không theo ID
+> - Khi duyệt có items: tất cả thiết bị trong phiếu được đặt status = `'Có sẵn'`
+> - `getRequestSlip` dùng LEFT JOIN → 1 phiếu có nhiều items sẽ tạo nhiều dòng kết quả
+> - `getAllRequestSlip` trong DAO không nhận tham số (service truyền `req.body` nhưng DAO bỏ qua)
+
+
+---
+
+## 1.5. Execution Report — request.service.js
+
+> **Lệnh chạy:**
+> ```bash
+> npx jest src/__tests__/service/request.service.test.js --no-coverage --verbose
+> ```
+
+### Tóm tắt kết quả
+
+| Hạng mục | Kết quả |
+|---|---|
+| Test Suites | 1 passed / 1 total |
+| Tests passed | _(điền sau khi chạy)_ |
+| Tests failed | _(điền sau khi chạy)_ |
+| Thời gian chạy | _(điền sau khi chạy)_ |
+
+### Chi tiết pass/fail theo nhóm
+
+| Nhóm hàm | Số TC | Passed | Failed |
+|---|---|---|---|
+| `requestSlip()` | 11 | | |
+| `getRequestSlip()` | 11 | | |
+| `approvedSlip()` | 12 | | |
+| **TỔNG** | **34** | | |
+
+### Screenshot — Terminal output
+
+> 📸 **[CHỤP MÀN HÌNH 1]**
+> Chụp toàn bộ terminal từ dòng `PASS src/__tests__/service/request.service.test.js`
+> đến dòng `Tests: 34 passed, 34 total`
+
+_(Dán ảnh vào đây)_
+
+---
+
+## 1.6. Code Coverage Report — request.service.js
+
+> **Lệnh chạy:**
+> ```bash
+> npx jest src/__tests__/service/request.service.test.js --coverage --verbose
+> ```
+> **HTML report:** Mở file `backend/coverage/lcov-report/request/request.service.js.html` bằng browser
+
+### Tóm tắt độ bao phủ
+
+| File | Statements % | Branches % | Functions % | Lines % |
+|---|---|---|---|---|
+| `request.service.js` | _(điền)_ | _(điền)_ | _(điền)_ | _(điền)_ |
+
+### Mục tiêu coverage
+
+| Chỉ số | Mục tiêu | Thực tế | Đạt? |
+|---|---|---|---|
+| Statements | ≥ 80% | | |
+| Branches | ≥ 80% | | |
+| Functions | ≥ 80% | | |
+| Lines | ≥ 80% | | |
+
+### Cách lấy số liệu để điền vào 2 bảng trên
+
+Sau khi chạy lệnh `--coverage`, mở file:
+```
+backend/coverage/lcov-report/request/request.service.js.html
+```
+Nhìn vào 4 con số ở đầu trang → điền vào bảng.
+
+### Screenshot 1 — Bảng coverage trong terminal
+
+> 📸 **[CHỤP MÀN HÌNH 2]**
+> Chụp bảng text coverage xuất hiện cuối terminal sau khi chạy `--coverage`
+> (Bảng có dạng: `File | % Stmts | % Branch | % Funcs | % Lines | Uncovered Lines`)
+
+_(Dán ảnh vào đây)_
+
+### Screenshot 2 — HTML Coverage Report (tổng quan)
+
+> 📸 **[CHỤP MÀN HÌNH 3]**
+> Mở `backend/coverage/lcov-report/index.html` bằng browser → chụp trang tổng quan
+
+_(Dán ảnh vào đây)_
+
+### Screenshot 3 — HTML Coverage Report (chi tiết request.service.js)
+
+> 📸 **[CHỤP MÀN HÌNH 4]**
+> Trong trang HTML, click vào thư mục `request` → click vào `request.service.js`
+> Chụp màn hình trang chi tiết (dòng xanh = covered, đỏ = not covered)
+
+_(Dán ảnh vào đây)_
+
+
+---
+
+# UNIT TEST DETAIL - facility-manager.guard.ts
+
+> **File:** `frontend/src/app/guards/facility-manager.guard.ts`
+> **Framework:** Jasmine + Karma (Angular TestBed)
+> **Mock:** `AuthService` được mock bằng `jasmine.createSpyObj`
+>
+> **Nghiệp vụ hệ thống:**
+> Guard bảo vệ các route dành riêng cho **Ban quản lý cơ sở vật chất** (`Banquảnlý`):
+> - `/request` — Xem danh sách yêu cầu mua sắm thiết bị
+> - `/them-cap-nhat` — Thêm/cập nhật thiết bị và phòng
+> - `/account` — Quản lý tài khoản người dùng
+> - `/quan-ly` — Trang quản lý tổng thể
+>
+> **Logic guard:**
+> - Gọi `authService.isFacilityManager()` → trả về `true` nếu role = `'Banquảnlý'`
+> - `isFacilityManager()` gọi `getRole()` → parse token từ sessionStorage
+> - Token format: `{ID}{random20chars}{normalizedRole}` — role ở cuối token
+> - `getRole()` kiểm tra token có kết thúc bằng `'Banquảnlý'` không
+> - Nếu `true` → cho phép truy cập route
+> - Nếu `false` → chặn truy cập (trả về `false`)
+>
+> **Các role trong hệ thống:** `'Giáoviên'` | `'Banquảnlý'` | `'Bangiámhiệu'`
+
+---
+
+## facilityManagerGuard(route, state)
+
+| Test Case ID | Test Objective | Input | Expected Output | Notes |
+|---|---|---|---|---|
+| TC_FM_GUARD_01 | Cho phép truy cập khi user là Ban quản lý (isFacilityManager = true) | `authService.isFacilityManager()` trả về `true` | Guard trả về `true` | Happy path: đúng role được phép |
+| TC_FM_GUARD_02 | Chặn truy cập khi user là Giáo viên (không phải Ban quản lý) | `authService.isFacilityManager()` trả về `false` (role = `'Giáoviên'`) | Guard trả về `false` | Giáo viên không được vào trang quản lý |
+| TC_FM_GUARD_03 | Chặn truy cập khi user là Ban giám hiệu (không phải Ban quản lý) | `authService.isFacilityManager()` trả về `false` (role = `'Bangiámhiệu'`) | Guard trả về `false` | Ban giám hiệu không được vào trang quản lý cơ sở |
+| TC_FM_GUARD_04 | Chặn truy cập khi chưa đăng nhập (token = null) | `authService.isFacilityManager()` trả về `false` (token = null → getRole() = null) | Guard trả về `false` | User chưa đăng nhập không được truy cập |
+| TC_FM_GUARD_05 | Chặn truy cập khi token hết hạn hoặc bị xóa khỏi sessionStorage | `authService.isFacilityManager()` trả về `false` (sessionStorage rỗng) | Guard trả về `false` | Token không còn trong sessionStorage |
+| TC_FM_GUARD_06 | Chặn truy cập khi token không hợp lệ (không kết thúc bằng role hợp lệ) | `authService.isFacilityManager()` trả về `false` (token không match bất kỳ role nào) | Guard trả về `false` | Token bị giả mạo hoặc corrupt |
+| TC_FM_GUARD_07 | Guard gọi đúng `authService.isFacilityManager()` (không gọi method khác) | `authService.isFacilityManager()` được spy | `isFacilityManager` được gọi đúng 1 lần | Guard chỉ dùng isFacilityManager, không dùng isTeacher hay isAdmin |
+| TC_FM_GUARD_08 | Bảo vệ route `/request` — chỉ Ban quản lý được vào | `route.url = '/request'`, `authService.isFacilityManager()` trả về `true` | Guard trả về `true` | Route xem yêu cầu mua sắm |
+| TC_FM_GUARD_09 | Bảo vệ route `/them-cap-nhat` — chỉ Ban quản lý được vào | `route.url = '/them-cap-nhat'`, `authService.isFacilityManager()` trả về `true` | Guard trả về `true` | Route thêm/cập nhật thiết bị |
+| TC_FM_GUARD_10 | Bảo vệ route `/account` — chỉ Ban quản lý được vào | `route.url = '/account'`, `authService.isFacilityManager()` trả về `true` | Guard trả về `true` | Route quản lý tài khoản |
+| TC_FM_GUARD_11 | Bảo vệ route `/quan-ly` — chỉ Ban quản lý được vào | `route.url = '/quan-ly'`, `authService.isFacilityManager()` trả về `true` | Guard trả về `true` | Route quản lý tổng thể |
+| TC_FM_GUARD_12 | Giáo viên bị chặn khi cố truy cập `/them-cap-nhat` | `route.url = '/them-cap-nhat'`, `authService.isFacilityManager()` trả về `false` | Guard trả về `false` | Giáo viên không được thêm/sửa thiết bị |
+| TC_FM_GUARD_13 | Giáo viên bị chặn khi cố truy cập `/account` | `route.url = '/account'`, `authService.isFacilityManager()` trả về `false` | Guard trả về `false` | Giáo viên không được quản lý tài khoản |
+| TC_FM_GUARD_14 | Guard trả về kiểu boolean (không phải Observable hay Promise) | `authService.isFacilityManager()` trả về `true` | `typeof result === 'boolean'` | Guard là synchronous, trả về boolean trực tiếp |
+| TC_FM_GUARD_15 | Guard inject AuthService đúng cách qua Angular DI | `TestBed.configureTestingModule` với mock AuthService | Guard được tạo thành công, không throw lỗi DI | Kiểm tra dependency injection |
+
+---
+
+## Tổng kết facility-manager.guard.ts
+
+| Hàm | Số test case | Độ ưu tiên | Nghiệp vụ chính |
+|---|---|---|---|
+| `facilityManagerGuard(route, state)` | 15 | CAO | Bảo vệ 4 route quản lý cơ sở vật chất |
+| **TỔNG** | **15** | | |
+
+> **Lưu ý nghiệp vụ quan trọng:**
+> - Guard chỉ kiểm tra `isFacilityManager()` — không redirect, chỉ trả về `true/false`
+> - `isFacilityManager()` phụ thuộc vào `getRole()` → phụ thuộc vào token trong sessionStorage
+> - Token format: `{ID}{20 random chars}{normalizedRole}` — role ở cuối, không có khoảng trắng
+> - Role `'Banquảnlý'` là normalize của `'Ban quản lý'` (xóa space)
+> - Guard này **không** bảo vệ route `/approved` và `/thong-ke-bao-cao` — đó là `adminGuard`
+> - Trong Angular, guard `CanActivateFn` là function, không phải class → test qua `TestBed.runInInjectionContext`
+
+---
+
+## Setup mẫu cho Jasmine/Karma
+
+```typescript
+// frontend/src/app/guards/facility-manager.guard.spec.ts
+import { TestBed } from '@angular/core/testing'
+import { CanActivateFn } from '@angular/router'
+import { facilityManagerGuard } from './facility-manager.guard'
+import { AuthService } from '../services/auth.service'
+
+describe('facilityManagerGuard', () => {
+  let mockAuthService: jasmine.SpyObj<AuthService>
+
+  const executeGuard: CanActivateFn = (...guardParameters) =>
+    TestBed.runInInjectionContext(() => facilityManagerGuard(...guardParameters))
+
+  beforeEach(() => {
+    mockAuthService = jasmine.createSpyObj('AuthService', ['isFacilityManager'])
+
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AuthService, useValue: mockAuthService }
+      ]
+    })
+  })
+
+  // TC_FM_GUARD_01
+  it('should return true when user is Facility Manager', () => {
+    mockAuthService.isFacilityManager.and.returnValue(true)
+    const result = executeGuard({} as any, {} as any)
+    expect(result).toBeTrue()
+  })
+
+  // TC_FM_GUARD_02
+  it('should return false when user is Teacher', () => {
+    mockAuthService.isFacilityManager.and.returnValue(false)
+    const result = executeGuard({} as any, {} as any)
+    expect(result).toBeFalse()
+  })
+})
+```
+
+
+---
+
+## 1.5. Execution Report — facility-manager.guard.ts
+
+> **Lệnh chạy:**
+> ```bash
+> node node_modules/@angular/cli/bin/ng.js test --include="src/app/guards/facility-manager.guard.spec.ts" --watch=false --browsers=ChromeHeadless --no-progress
+> ```
+> *(Chạy từ thư mục `frontend`)*
+
+### Tóm tắt kết quả
+
+| Hạng mục | Kết quả |
+|---|---|
+| Test Suites | 1 passed / 1 total |
+| Tests passed | _(điền sau khi chạy)_ |
+| Tests failed | _(điền sau khi chạy)_ |
+| Thời gian chạy | _(điền sau khi chạy)_ |
+
+### Chi tiết pass/fail theo nhóm
+
+| Nhóm | Số TC | Passed | Failed |
+|---|---|---|---|
+| Kiểm tra quyền truy cập theo role | 6 | | |
+| Kiểm tra interaction với AuthService | 1 | | |
+| Kiểm tra bảo vệ từng route | 6 | | |
+| Kiểm tra kiểu dữ liệu và DI | 2 | | |
+| **TỔNG** | **15** | | |
+
+### Screenshot — Terminal output
+
+> 📸 **[CHỤP MÀN HÌNH 1]**
+> Chụp toàn bộ terminal từ dòng `Chrome Headless ... Connected`
+> đến dòng `TOTAL: 15 SUCCESS`
+
+_(Dán ảnh vào đây)_
+
+---
+
+## 1.6. Code Coverage Report — facility-manager.guard.ts
+
+> **Lệnh chạy:**
+> ```bash
+> node node_modules/@angular/cli/bin/ng.js test --include="src/app/guards/facility-manager.guard.spec.ts" --watch=false --browsers=ChromeHeadless --code-coverage --no-progress
+> ```
+> *(Chạy từ thư mục `frontend`)*
+> **HTML report:** Mở file `frontend/coverage/index.html` bằng browser
+
+### Tóm tắt độ bao phủ
+
+| File | Statements % | Branches % | Functions % | Lines % |
+|---|---|---|---|---|
+| `facility-manager.guard.ts` | _(điền)_ | _(điền)_ | _(điền)_ | _(điền)_ |
+
+### Mục tiêu coverage
+
+| Chỉ số | Mục tiêu | Thực tế | Đạt? |
+|---|---|---|---|
+| Statements | ≥ 90% | | |
+| Branches | ≥ 90% | | |
+| Functions | ≥ 90% | | |
+| Lines | ≥ 90% | | |
+
+### Cách lấy số liệu để điền vào 2 bảng trên
+
+Sau khi chạy lệnh `--code-coverage`, mở file:
+```
+frontend/coverage/index.html
+```
+Tìm dòng `facility-manager.guard.ts` → lấy 4 con số % → điền vào bảng.
+
+### Screenshot 1 — Bảng coverage trong terminal
+
+> 📸 **[CHỤP MÀN HÌNH 2]**
+> Chụp phần cuối terminal sau khi chạy `--code-coverage`
+> (Phần có dạng: `Statements : XX% | Branches : XX% | Functions : XX% | Lines : XX%`)
+
+_(Dán ảnh vào đây)_
+
+### Screenshot 2 — HTML Coverage Report (tổng quan)
+
+> 📸 **[CHỤP MÀN HÌNH 3]**
+> Mở `frontend/coverage/index.html` bằng browser → chụp trang tổng quan
+
+_(Dán ảnh vào đây)_
+
+### Screenshot 3 — HTML Coverage Report (chi tiết facility-manager.guard.ts)
+
+> 📸 **[CHỤP MÀN HÌNH 4]**
+> Trong trang HTML, tìm và click vào `facility-manager.guard.ts`
+> Chụp màn hình trang chi tiết (dòng xanh = covered, đỏ = not covered)
+
+_(Dán ảnh vào đây)_
