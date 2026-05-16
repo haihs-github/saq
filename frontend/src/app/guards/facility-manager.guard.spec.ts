@@ -1,319 +1,269 @@
-/**
- * Unit Test Script: facility-manager.guard.ts
- * File được test: frontend/src/app/guards/facility-manager.guard.ts
- * Framework: Jasmine + Karma (Angular TestBed)
- *
- * Nghiệp vụ:
- *   Guard bảo vệ các route dành riêng cho Ban quản lý cơ sở vật chất:
- *     /request        — Xem danh sách yêu cầu mua sắm
- *     /them-cap-nhat  — Thêm/cập nhật thiết bị và phòng
- *     /account        — Quản lý tài khoản người dùng
- *     /quan-ly        — Trang quản lý tổng thể
- *
- *   Logic: gọi authService.isFacilityManager()
- *     → true  (role = 'Banquảnlý') : cho phép truy cập
- *     → false (role khác hoặc chưa đăng nhập) : chặn truy cập
- *
- * Chiến lược:
- *   - Mock AuthService bằng jasmine.createSpyObj → không có DB/sessionStorage thật
- *   - Guard không truy cập DB → không cần CheckDB / Rollback DB
- *   - afterEach: TestBed.resetTestingModule() đảm bảo trạng thái sạch
- *
- * Token format thực tế: {ID}{20 random chars}{normalizedRole}
- *   Ví dụ: "3ABCDEFGHIJKLMNOPQRSTBanquảnlý"
- *   Role 'Banquảnlý' = normalize của 'Ban quản lý' (xóa space)
- */
+import { TestBed } from '@angular/core/testing';
+import { ActivatedRouteSnapshot, CanActivateFn, RouterStateSnapshot } from '@angular/router';
 
-import { TestBed } from '@angular/core/testing'
-import { CanActivateFn, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router'
-import { facilityManagerGuard } from './facility-manager.guard'
-import { AuthService } from '../services/auth.service'
+import { AuthService } from '../services/auth.service';
+
+import { facilityManagerGuard } from './facility-manager.guard';
 
 describe('facilityManagerGuard', () => {
-
-  // ─── Mock AuthService ──────────────────────────────────────────────────────
-  // Chỉ mock isFacilityManager — method duy nhất guard sử dụng
-  let mockAuthService: jasmine.SpyObj<AuthService>
-
   /**
-   * Helper: chạy guard trong Angular injection context
-   * Cần thiết vì facilityManagerGuard dùng inject() — chỉ hoạt động trong injection context
+   * Unit test scripts — facility-manager.guard.ts
+   *
+   * CheckDB:
+   * - N/A. Guard không truy cập CSDL (không call backend/DAO/Repository).
+   *
+   * Rollback:
+   * - N/A. Guard không thay đổi data trong CSDL.
+   *
+   * Lưu ý:
+   * - Đây là functional guard (dùng `inject(...)`) nên phải chạy trong injection context.
+   * - Mỗi `it(...)` đều có comment “Test Case ID” để trace sang UNIT_TEST_DETAIL.md.
    */
-  const executeGuard: CanActivateFn = (...guardParameters) =>
-    TestBed.runInInjectionContext(() => facilityManagerGuard(...guardParameters))
 
-  /**
-   * Helper: tạo mock ActivatedRouteSnapshot với url cho trước
-   * Dùng cho các test case kiểm tra bảo vệ route cụ thể
-   */
-  const createMockRoute = (url: string): ActivatedRouteSnapshot => {
-    return { url } as unknown as ActivatedRouteSnapshot
-  }
+  const executeFacilityManagerGuard: CanActivateFn = (...guardParameters) =>
+    TestBed.runInInjectionContext(() => facilityManagerGuard(...guardParameters));
 
-  /**
-   * Helper: tạo mock RouterStateSnapshot với url cho trước
-   */
-  const createMockState = (url: string): RouterStateSnapshot => {
-    return { url } as RouterStateSnapshot
-  }
+  let mockAuthService: jasmine.SpyObj<AuthService>;
 
-  // ─── Setup trước mỗi test ─────────────────────────────────────────────────
+  const makeRouteSnapshot = (data: Record<string, unknown> = {}): ActivatedRouteSnapshot => {
+    // Guard hiện tại không dùng `route`, nhưng tạo object rõ ràng giúp test dễ hiểu.
+    return ({ data } as unknown) as ActivatedRouteSnapshot;
+  };
+
+  const makeRouterStateSnapshot = (url: string): RouterStateSnapshot => {
+    // Guard hiện tại không dùng `state`, nhưng truyền url giúp thể hiện ngữ cảnh nghiệp vụ.
+    return ({ url } as unknown) as RouterStateSnapshot;
+  };
+
   beforeEach(() => {
-    // Tạo spy object cho AuthService — chỉ mock method isFacilityManager
-    mockAuthService = jasmine.createSpyObj<AuthService>('AuthService', [
-      'isFacilityManager',
-      'isTeacher',
-      'isManagementBoard',
-      'isAdmin',
-      'isLoggedIn',
-    ])
-
-    // Cấu hình TestBed với mock AuthService
+    mockAuthService = jasmine.createSpyObj<AuthService>('AuthService', ['isFacilityManager']);
     TestBed.configureTestingModule({
-      providers: [
-        { provide: AuthService, useValue: mockAuthService }
-      ]
-    })
-  })
+      providers: [{ provide: AuthService, useValue: mockAuthService }],
+    });
+  });
 
-  // ─── Teardown sau mỗi test ────────────────────────────────────────────────
-  afterEach(() => {
-    // Rollback: reset TestBed về trạng thái ban đầu sau mỗi test
-    TestBed.resetTestingModule()
-  })
+  it('TC_FACMGUARD_01 - allow access to request-processing route when user is Facility Manager (happy path)', () => {
+    // Test Case ID: TC_FACMGUARD_01
+    // Nghiệp vụ: Ban quản lý xử lý yêu cầu (request) nên phải được phép vào `/request`.
+    mockAuthService.isFacilityManager.and.returnValue(true);
 
-  // ===========================================================================
-  // NHÓM 1: Kiểm tra logic cốt lõi — allow / deny theo role
-  // ===========================================================================
-  describe('Kiểm tra quyền truy cập theo role', () => {
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
 
-    // TC_FM_GUARD_01: Ban quản lý được phép truy cập
-    it('[TC_FM_GUARD_01] nên trả về true khi user là Ban quản lý (isFacilityManager = true)', () => {
-      // Arrange: mock user là Ban quản lý
-      mockAuthService.isFacilityManager.and.returnValue(true)
-      const mockRoute = createMockRoute('/request')
-      const mockState = createMockState('/request')
+    expect(canActivate).toBeTrue();
+  });
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+  it('TC_FACMGUARD_02 - allow access to add/update equipment route when user is Facility Manager', () => {
+    // Test Case ID: TC_FACMGUARD_02
+    // Nghiệp vụ: Ban quản lý được phép vào màn thêm/cập nhật thiết bị.
+    mockAuthService.isFacilityManager.and.returnValue(true);
 
-      // Assert: guard cho phép truy cập
-      expect(result).toBeTrue()
-    })
+    const canActivate = executeFacilityManagerGuard(
+      makeRouteSnapshot(),
+      makeRouterStateSnapshot('/them-cap-nhat'),
+    );
 
-    // TC_FM_GUARD_02: Giáo viên bị chặn
-    it('[TC_FM_GUARD_02] nên trả về false khi user là Giáo viên (không phải Ban quản lý)', () => {
-      // Arrange: mock user là Giáo viên → isFacilityManager = false
-      mockAuthService.isFacilityManager.and.returnValue(false)
-      const mockRoute = createMockRoute('/request')
-      const mockState = createMockState('/request')
+    expect(canActivate).toBeTrue();
+  });
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+  it('TC_FACMGUARD_03 - allow access to account route when user is Facility Manager', () => {
+    // Test Case ID: TC_FACMGUARD_03
+    // Nghiệp vụ: Ban quản lý truy cập màn quản lý tài khoản trong phạm vi nghiệp vụ.
+    mockAuthService.isFacilityManager.and.returnValue(true);
 
-      // Assert: guard chặn truy cập
-      expect(result).toBeFalse()
-    })
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/account'));
 
-    // TC_FM_GUARD_03: Ban giám hiệu bị chặn
-    it('[TC_FM_GUARD_03] nên trả về false khi user là Ban giám hiệu (không phải Ban quản lý)', () => {
-      // Arrange: mock user là Ban giám hiệu → isFacilityManager = false
-      // (Ban giám hiệu có role 'Bangiámhiệu', không phải 'Banquảnlý')
-      mockAuthService.isFacilityManager.and.returnValue(false)
-      const mockRoute = createMockRoute('/them-cap-nhat')
-      const mockState = createMockState('/them-cap-nhat')
+    expect(canActivate).toBeTrue();
+  });
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+  it('TC_FACMGUARD_04 - allow access to management route when user is Facility Manager', () => {
+    // Test Case ID: TC_FACMGUARD_04
+    // Nghiệp vụ: Ban quản lý truy cập màn tổng hợp/điều phối quản lý.
+    mockAuthService.isFacilityManager.and.returnValue(true);
 
-      // Assert
-      expect(result).toBeFalse()
-    })
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/quan-ly'));
 
-    // TC_FM_GUARD_04: Chưa đăng nhập bị chặn (token = null)
-    it('[TC_FM_GUARD_04] nên trả về false khi chưa đăng nhập (token = null → isFacilityManager = false)', () => {
-      // Arrange: user chưa đăng nhập → getRole() = null → isFacilityManager = false
-      mockAuthService.isFacilityManager.and.returnValue(false)
-      const mockRoute = createMockRoute('/account')
-      const mockState = createMockState('/account')
+    expect(canActivate).toBeTrue();
+  });
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+  it('TC_FACMGUARD_05 - block access to /request when user is not Facility Manager', () => {
+    // Test Case ID: TC_FACMGUARD_05
+    // Nghiệp vụ: role khác không được xử lý yêu cầu.
+    mockAuthService.isFacilityManager.and.returnValue(false);
 
-      // Assert
-      expect(result).toBeFalse()
-    })
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
 
-    // TC_FM_GUARD_05: Token hết hạn / bị xóa khỏi sessionStorage
-    it('[TC_FM_GUARD_05] nên trả về false khi token hết hạn hoặc bị xóa khỏi sessionStorage', () => {
-      // Arrange: sessionStorage rỗng → getToken() = null → isFacilityManager = false
-      mockAuthService.isFacilityManager.and.returnValue(false)
-      const mockRoute = createMockRoute('/quan-ly')
-      const mockState = createMockState('/quan-ly')
+    expect(canActivate).toBeFalse();
+  });
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+  it('TC_FACMGUARD_06 - block access to /them-cap-nhat when user is not Facility Manager', () => {
+    // Test Case ID: TC_FACMGUARD_06
+    // Nghiệp vụ: thay đổi dữ liệu thiết bị là thao tác nhạy cảm, phải chặn role không phù hợp.
+    mockAuthService.isFacilityManager.and.returnValue(false);
 
-      // Assert
-      expect(result).toBeFalse()
-    })
+    const canActivate = executeFacilityManagerGuard(
+      makeRouteSnapshot(),
+      makeRouterStateSnapshot('/them-cap-nhat'),
+    );
 
-    // TC_FM_GUARD_06: Token không hợp lệ (không kết thúc bằng role hợp lệ)
-    it('[TC_FM_GUARD_06] nên trả về false khi token không hợp lệ (không match role nào)', () => {
-      // Arrange: token bị giả mạo hoặc corrupt → getRole() = null → isFacilityManager = false
-      mockAuthService.isFacilityManager.and.returnValue(false)
-      const mockRoute = createMockRoute('/request')
-      const mockState = createMockState('/request')
+    expect(canActivate).toBeFalse();
+  });
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+  it('TC_FACMGUARD_07 - block access when not logged in (isFacilityManager returns false)', () => {
+    // Test Case ID: TC_FACMGUARD_07
+    // Ghi chú: thực tế thường có authGuard chạy trước; ở đây đảm bảo facilityManagerGuard standalone vẫn deny.
+    mockAuthService.isFacilityManager.and.returnValue(false);
 
-      // Assert
-      expect(result).toBeFalse()
-    })
-  })
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
 
-  // ===========================================================================
-  // NHÓM 2: Kiểm tra interaction — guard gọi đúng method
-  // ===========================================================================
-  describe('Kiểm tra interaction với AuthService', () => {
+    expect(canActivate).toBeFalse();
+  });
 
-    // TC_FM_GUARD_07: Guard chỉ gọi isFacilityManager(), không gọi method khác
-    it('[TC_FM_GUARD_07] nên gọi đúng isFacilityManager() và không gọi isTeacher() hay isAdmin()', () => {
-      // Arrange
-      mockAuthService.isFacilityManager.and.returnValue(true)
-      const mockRoute = createMockRoute('/request')
-      const mockState = createMockState('/request')
+  it('TC_FACMGUARD_08 - block Teacher attempting to access Facility Manager routes', () => {
+    // Test Case ID: TC_FACMGUARD_08
+    // Nghiệp vụ: Teacher chỉ đăng ký/mượn; không xử lý request/quản lý thiết bị.
+    mockAuthService.isFacilityManager.and.returnValue(false);
 
-      // Act
-      executeGuard(mockRoute, mockState)
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
 
-      // Assert: chỉ isFacilityManager được gọi
-      expect(mockAuthService.isFacilityManager).toHaveBeenCalledTimes(1)
-      expect(mockAuthService.isTeacher).not.toHaveBeenCalled()
-      expect(mockAuthService.isManagementBoard).not.toHaveBeenCalled()
-      expect(mockAuthService.isAdmin).not.toHaveBeenCalled()
-    })
-  })
+    expect(canActivate).toBeFalse();
+  });
 
-  // ===========================================================================
-  // NHÓM 3: Kiểm tra bảo vệ từng route cụ thể
-  // ===========================================================================
-  describe('Kiểm tra bảo vệ từng route', () => {
+  it('TC_FACMGUARD_09 - block Management Board attempting to access Facility Manager routes', () => {
+    // Test Case ID: TC_FACMGUARD_09
+    // Nghiệp vụ: Board phê duyệt/thống kê, không làm nghiệp vụ quản lý thiết bị.
+    mockAuthService.isFacilityManager.and.returnValue(false);
 
-    // TC_FM_GUARD_08: Route /request — Ban quản lý được vào
-    it('[TC_FM_GUARD_08] nên cho phép Ban quản lý truy cập route /request (xem yêu cầu mua sắm)', () => {
-      // Arrange
-      mockAuthService.isFacilityManager.and.returnValue(true)
-      const mockRoute = createMockRoute('/request')
-      const mockState = createMockState('/request')
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+    expect(canActivate).toBeFalse();
+  });
 
-      // Assert
-      expect(result).toBeTrue()
-    })
+  it('TC_FACMGUARD_10 - block Admin attempting to access Facility Manager routes (by rule)', () => {
+    // Test Case ID: TC_FACMGUARD_10
+    // Nghiệp vụ theo rule “Manager-only”: Admin không thuộc role Facility Manager => bị chặn bởi guard này.
+    // Nếu muốn Admin được phép vào mọi route, cần đổi yêu cầu/logic (không thuộc phạm vi test).
+    mockAuthService.isFacilityManager.and.returnValue(false);
 
-    // TC_FM_GUARD_09: Route /them-cap-nhat — Ban quản lý được vào
-    it('[TC_FM_GUARD_09] nên cho phép Ban quản lý truy cập route /them-cap-nhat (thêm/cập nhật thiết bị)', () => {
-      // Arrange
-      mockAuthService.isFacilityManager.and.returnValue(true)
-      const mockRoute = createMockRoute('/them-cap-nhat')
-      const mockState = createMockState('/them-cap-nhat')
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/quan-ly'));
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+    expect(canActivate).toBeFalse();
+  });
 
-      // Assert
-      expect(result).toBeTrue()
-    })
+  it('TC_FACMGUARD_11 - deny when role/session data is missing (conservative default)', () => {
+    // Test Case ID: TC_FACMGUARD_11
+    // Bảo mật: thiếu role/session (token lỗi/parse lỗi) => deny.
+    mockAuthService.isFacilityManager.and.returnValue(false);
 
-    // TC_FM_GUARD_10: Route /account — Ban quản lý được vào
-    it('[TC_FM_GUARD_10] nên cho phép Ban quản lý truy cập route /account (quản lý tài khoản)', () => {
-      // Arrange
-      mockAuthService.isFacilityManager.and.returnValue(true)
-      const mockRoute = createMockRoute('/account')
-      const mockState = createMockState('/account')
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/account'));
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+    expect(canActivate).toBeFalse();
+  });
 
-      // Assert
-      expect(result).toBeTrue()
-    })
+  it('TC_FACMGUARD_12 - treat null/undefined isFacilityManager result as not Facility Manager', () => {
+    // Test Case ID: TC_FACMGUARD_12
+    // JS truthy/falsey: null/undefined => falsey => guard phải chặn.
+    mockAuthService.isFacilityManager.and.returnValue(undefined as unknown as boolean);
 
-    // TC_FM_GUARD_11: Route /quan-ly — Ban quản lý được vào
-    it('[TC_FM_GUARD_11] nên cho phép Ban quản lý truy cập route /quan-ly (trang quản lý tổng thể)', () => {
-      // Arrange
-      mockAuthService.isFacilityManager.and.returnValue(true)
-      const mockRoute = createMockRoute('/quan-ly')
-      const mockState = createMockState('/quan-ly')
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+    expect(canActivate).toBeFalse();
+  });
 
-      // Assert
-      expect(result).toBeTrue()
-    })
+  it('TC_FACMGUARD_13 - truthy non-boolean from isFacilityManager still allows (document current behavior)', () => {
+    // Test Case ID: TC_FACMGUARD_13
+    // Hành vi code hiện tại: nếu isFacilityManager() trả truthy (dù không phải boolean) => allow.
+    mockAuthService.isFacilityManager.and.returnValue('true' as unknown as boolean);
 
-    // TC_FM_GUARD_12: Giáo viên bị chặn tại /them-cap-nhat
-    it('[TC_FM_GUARD_12] nên chặn Giáo viên khi cố truy cập /them-cap-nhat', () => {
-      // Arrange: Giáo viên không được thêm/sửa thiết bị
-      mockAuthService.isFacilityManager.and.returnValue(false)
-      const mockRoute = createMockRoute('/them-cap-nhat')
-      const mockState = createMockState('/them-cap-nhat')
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+    expect(canActivate).toBeTrue();
+  });
 
-      // Assert
-      expect(result).toBeFalse()
-    })
+  it('TC_FACMGUARD_14 - truthy string role (e.g., "Manager") allows (document current behavior)', () => {
+    // Test Case ID: TC_FACMGUARD_14
+    // Nếu AuthService trả về string truthy, guard vẫn pass theo hiện trạng.
+    mockAuthService.isFacilityManager.and.returnValue('Manager' as unknown as boolean);
 
-    // TC_FM_GUARD_13: Giáo viên bị chặn tại /account
-    it('[TC_FM_GUARD_13] nên chặn Giáo viên khi cố truy cập /account (quản lý tài khoản)', () => {
-      // Arrange: Giáo viên không được quản lý tài khoản
-      mockAuthService.isFacilityManager.and.returnValue(false)
-      const mockRoute = createMockRoute('/account')
-      const mockState = createMockState('/account')
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/quan-ly'));
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+    expect(canActivate).toBeTrue();
+  });
 
-      // Assert
-      expect(result).toBeFalse()
-    })
-  })
+  it('TC_FACMGUARD_15 - guard ignores route details (route.data can be complex)', () => {
+    // Test Case ID: TC_FACMGUARD_15
+    // Guard không đọc route.data nên quyết định chỉ dựa trên isFacilityManager().
+    mockAuthService.isFacilityManager.and.returnValue(false);
 
-  // ===========================================================================
-  // NHÓM 4: Kiểm tra kiểu dữ liệu và DI
-  // ===========================================================================
-  describe('Kiểm tra kiểu dữ liệu và Dependency Injection', () => {
+    const routeSnapshot = makeRouteSnapshot({ feature: 'equipment-management', nested: { level: 1 } });
+    const canActivate = executeFacilityManagerGuard(routeSnapshot, makeRouterStateSnapshot('/request'));
 
-    // TC_FM_GUARD_14: Guard trả về boolean (synchronous, không phải Observable/Promise)
-    it('[TC_FM_GUARD_14] nên trả về kiểu boolean (synchronous, không phải Observable hay Promise)', () => {
-      // Arrange
-      mockAuthService.isFacilityManager.and.returnValue(true)
-      const mockRoute = createMockRoute('/request')
-      const mockState = createMockState('/request')
+    expect(canActivate).toBeFalse();
+  });
 
-      // Act
-      const result = executeGuard(mockRoute, mockState)
+  it('TC_FACMGUARD_16 - guard does not depend on state (state can be undefined in tests)', () => {
+    // Test Case ID: TC_FACMGUARD_16
+    // Kỹ thuật: code hiện tại không dùng state, nên state undefined vẫn chạy.
+    mockAuthService.isFacilityManager.and.returnValue(false);
 
-      // Assert: kiểu dữ liệu phải là boolean
-      expect(typeof result).toBe('boolean')
-    })
+    const canActivate = executeFacilityManagerGuard(
+      makeRouteSnapshot(),
+      undefined as unknown as RouterStateSnapshot,
+    );
 
-    // TC_FM_GUARD_15: Guard inject AuthService đúng cách qua Angular DI
-    it('[TC_FM_GUARD_15] nên inject AuthService thành công qua Angular DI (không throw lỗi)', () => {
-      // Arrange: TestBed đã cấu hình với mock AuthService trong beforeEach
-      mockAuthService.isFacilityManager.and.returnValue(false)
-      const mockRoute = createMockRoute('/request')
-      const mockState = createMockState('/request')
+    expect(canActivate).toBeFalse();
+  });
 
-      // Act & Assert: không throw lỗi DI khi chạy guard
-      expect(() => executeGuard(mockRoute, mockState)).not.toThrow()
-    })
-  })
-})
+  it('TC_FACMGUARD_17 - call isFacilityManager exactly once per guard execution', () => {
+    // Test Case ID: TC_FACMGUARD_17
+    // Kỹ thuật: đảm bảo không gọi isFacilityManager nhiều lần.
+    mockAuthService.isFacilityManager.and.returnValue(true);
+
+    executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
+
+    expect(mockAuthService.isFacilityManager).toHaveBeenCalledTimes(1);
+  });
+
+  it('TC_FACMGUARD_18 - repeated checks should consistently deny when not Facility Manager', () => {
+    // Test Case ID: TC_FACMGUARD_18
+    // Router có thể evaluate guard nhiều lần; kết quả phải nhất quán.
+    mockAuthService.isFacilityManager.and.returnValue(false);
+
+    const first = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
+    const second = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
+    const third = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
+
+    expect(first).toBeFalse();
+    expect(second).toBeFalse();
+    expect(third).toBeFalse();
+  });
+
+  it('TC_FACMGUARD_19 - propagate error if isFacilityManager throws (document current behavior)', () => {
+    // Test Case ID: TC_FACMGUARD_19
+    // Hiện tại guard không try/catch nên nếu isFacilityManager throw thì guard throw.
+    mockAuthService.isFacilityManager.and.throwError('token parse failed');
+
+    expect(() =>
+      executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request')),
+    ).toThrow();
+  });
+
+  it('TC_FACMGUARD_20 - misconfiguration: facilityManagerGuard applied to /login should still deny non-manager', () => {
+    // Test Case ID: TC_FACMGUARD_20
+    // Cảnh báo cấu hình: gắn facilityManagerGuard lên route /login có thể chặn trang login.
+    mockAuthService.isFacilityManager.and.returnValue(false);
+
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/login'));
+
+    expect(canActivate).toBeFalse();
+  });
+
+  it('TC_FACMGUARD_21 - note: UI guard can be bypassed if isFacilityManager returns true (security reminder)', () => {
+    // Test Case ID: TC_FACMGUARD_21
+    // Mục tiêu: ghi nhận rủi ro nghiệp vụ — phân quyền cuối cùng phải enforce ở backend.
+    mockAuthService.isFacilityManager.and.returnValue(true);
+
+    const canActivate = executeFacilityManagerGuard(makeRouteSnapshot(), makeRouterStateSnapshot('/request'));
+
+    expect(canActivate).toBeTrue();
+  });
+});
